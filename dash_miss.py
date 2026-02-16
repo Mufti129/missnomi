@@ -755,12 +755,12 @@ elif analysis == "Klasifikasi Produk":
 
     # umur produk dari Launching
     if "Launching" in df_prod.columns:
-        df_prod["age_months"] = (
-            (today.to_period("M") - df_prod["Launching"].dt.to_period("M"))
-            .astype("Int64")
-        )
+        diff = today.to_period("M") - df_prod["Launching"].dt.to_period("M")
+    # ubah ke numeric, NaN kalau Launching kosong / invalid
+        df_prod["age_months"] = pd.to_numeric(diff, errors="coerce")
     else:
-        df_prod["age_months"] = pd.NA
+        df_prod["age_months"] = np.nan
+
 
     # threshold Best Seller: top 20% revenue / qty (approx. ABC) [web:58][web:61]
     p80_rev = df_prod["total_revenue"].quantile(0.8)
@@ -775,9 +775,11 @@ elif analysis == "Klasifikasi Produk":
             return "Dead"
 
         # NEW LAUNCHING: umur ≤ 3 bulan sejak Launching (jika Launching ada)
-        if pd.notna(row.get("age_months", pd.NA)):
-            if row["age_months"] <= 3:
-                return "New Launching"
+        age = row.get("age_months", np.nan)
+        if not np.isnan(age):
+            if age <= 3:
+            return "New Launching"
+
 
         # BEST SELLER: masuk top 20% revenue/qty dan laku di ≥ 50% bulan
         if (row["total_revenue"] >= p80_rev) or (row["total_qty"] >= p80_qty):
@@ -1281,6 +1283,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
