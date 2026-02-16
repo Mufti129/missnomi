@@ -846,22 +846,18 @@ elif analysis == "Klasifikasi Produk":
         f"Level: {'Per SKU' if level_class == 'Per SKU' else 'Per Nama Produk'}"
     )
 
+    df_show = df_prod[show_cols].sort_values("total_revenue", ascending=False)
+    numeric_fmt = {}
+    for col in ["total_revenue", "total_qty", "age_months", "months_sold", "HPP", "Sell Price"]:
+        if col in df_show.columns:
+            numeric_fmt[col] = "{:,.0f}"
+
     st.dataframe(
-        df_prod[show_cols]
-        .sort_values("total_revenue", ascending=False)
-        .style.format(
-            {
-                "total_revenue": "{:,.0f}",
-                "total_qty": "{:,.0f}",
-                "age_months": "{:,.0f}",
-                "months_sold": "{:,.0f}",
-                "HPP": "{:,.0f}",
-                "Sell Price": "{:,.0f}",
-            },
-            na_rep="-"
-        )
+        df_show.style.format(numeric_fmt, na_rep="-")
     )
 
+    #
+    
     # ==========================================
     # 9. RINGKASAN & GRAFIK DISTRIBUSI KELAS
     # ==========================================
@@ -1307,6 +1303,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
