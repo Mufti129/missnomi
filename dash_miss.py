@@ -529,19 +529,33 @@ elif analysis == "Pareto Produk":
             st.markdown(
                 "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
             )
+
 elif analysis == "Profit & Margin":
 
     st.header("💰 Profit & Margin Produk")
 
-    # Cek kolom HPP & HARGA JUAL
     if ("HPP" not in df_filtered.columns) or ("HARGA JUAL" not in df_filtered.columns):
         st.error("Kolom 'HPP' dan/atau 'HARGA JUAL' tidak ditemukan di data. Tidak bisa hitung profit.")
         st.stop()
 
     df_pm = df_filtered.copy()
 
+    # pastikan QTY, HPP, HARGA JUAL numerik
+    for col in ["QTY", "HPP", "HARGA JUAL", "Nominal"]:
+        if col in df_pm.columns:
+            df_pm[col] = (
+                df_pm[col]
+                .astype(str)
+                .str.replace(".", "", regex=False)   # kalau pakai titik pemisah ribuan
+                .str.replace(",", ".", regex=False)  # kalau ada koma desimal
+            )
+            df_pm[col] = pd.to_numeric(df_pm[col], errors="coerce")
+
+    # hapus baris yang QTY atau HPP-nya tidak valid (NaN)
+    df_pm = df_pm.dropna(subset=["QTY", "HPP"])
+
     # Hitung COGS dan Profit
-    df_pm["Revenue"] = df_pm["Nominal"]  # jika Nominal sudah = QTY * HARGA JUAL
+    df_pm["Revenue"] = df_pm["Nominal"]      # asumsi sudah QTY * HARGA JUAL
     df_pm["COGS"] = df_pm["HPP"] * df_pm["QTY"]
     df_pm["Profit"] = df_pm["Revenue"] - df_pm["COGS"]
     df_pm["Margin_%"] = df_pm["Profit"] / df_pm["Revenue"] * 100
@@ -949,6 +963,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
