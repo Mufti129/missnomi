@@ -154,7 +154,7 @@ lstm_toggle = st.sidebar.checkbox("Enable LSTM (only if TensorFlow is installed)
 
 # Analysis selector
 st.sidebar.markdown("### Analisis")
-analysis = st.sidebar.radio("Pilih Analisis:", ["Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk"])
+analysis = st.sidebar.radio("Pilih Analisis:", ["Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk"])
 
 # -----------------------------
 # Apply filters
@@ -416,8 +416,83 @@ elif analysis == "Monitoring Produk":
             "Tidak ditemukan produk dengan penjualan nol berkepanjangan."
         )
 
+elif analysis == "Pareto Produk":
 
+    st.header("Pareto Analisis Produk")
 
+    # Pilih metrik
+    metric_pareto = st.radio(
+        "Pilih metrik untuk Pareto:",
+        ["QTY", "Nominal"],
+        index=0
+    )
+
+    # Agregasi per produk (pakai df_filtered yang sudah terfilter tanggal & produk di atas)
+    df_pareto = (
+        df_filtered
+        .groupby("Nama Barang")[["QTY", "Nominal"]]
+        .sum()
+        .reset_index()
+    )
+
+    if df_pareto.empty:
+        st.warning("Tidak ada data untuk analisis Pareto pada filter saat ini.")
+    else:
+        # Urutkan berdasarkan metrik yang dipilih
+        df_pareto = df_pareto.sort_values(metric_pareto, ascending=False)
+
+        # Hitung cumulative dan persentase
+        total_val = df_pareto[metric_pareto].sum()
+        df_pareto["Cum_Value"] = df_pareto[metric_pareto].cumsum()
+        df_pareto["Cum_%"] = df_pareto["Cum_Value"] / total_val * 100
+
+        st.subheader(f"Tabel Pareto Produk berdasarkan {metric_pareto}")
+        st.dataframe(
+            df_pareto[["Nama Barang", "QTY", "Nominal", "Cum_%"]]
+            .style.format({"QTY": "{:,.0f}", "Nominal": "{:,.0f}", "Cum_%": "{:,.2f}%"})
+        )
+
+        # Plot Pareto (bar + cumulative line)
+        st.subheader("Pareto Chart")
+        fig, ax1 = plt.subplots(figsize=(12, 4))
+
+        x = np.arange(len(df_pareto))
+        ax1.bar(x, df_pareto[metric_pareto], color="tab:blue")
+        ax1.set_xlabel("Produk")
+        ax1.set_ylabel(metric_pareto, color="tab:blue")
+        ax1.tick_params(axis="y", labelcolor="tab:blue")
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(df_pareto["Nama Barang"], rotation=90)
+
+        ax2 = ax1.twinx()
+        ax2.plot(x, df_pareto["Cum_%"], color="tab:red", marker="o")
+        ax2.set_ylabel("Cumulative %", color="tab:red")
+        ax2.tick_params(axis="y", labelcolor="tab:red")
+        ax2.set_ylim(0, 110)
+
+        # Garis referensi 80%
+        ax2.axhline(80, color="gray", linestyle="--", linewidth=1)
+
+        fig.tight_layout()
+        st.pyplot(fig)
+
+        # Insight 80/20
+        top_mask = df_pareto["Cum_%"] <= 80
+        top_products = df_pareto.loc[top_mask, "Nama Barang"].tolist()
+        top_share = df_pareto.loc[top_mask, "Cum_%"].max() if not df_pareto.loc[top_mask, "Cum_%"].empty else 0
+
+        st.subheader("Insight Pareto")
+        if top_products:
+            st.markdown(
+                f"- Sekitar **{len(top_products)} produk** pertama menyumbang "
+                f"±**{top_share:.1f}%** dari total {metric_pareto}.\n"
+                f"- Produk kunci: `{', '.join(top_products[:10])}`"
+                + (" dan seterusnya..." if len(top_products) > 10 else "")
+            )
+        else:
+            st.markdown(
+                "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
+            )
 
 # -----------------------------
 # Forecasting
@@ -734,3 +809,4 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
