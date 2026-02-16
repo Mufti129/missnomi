@@ -858,6 +858,28 @@ elif analysis == "Klasifikasi Produk":
     st.dataframe(df_show)
 
     # ==========================================
+    # SUMMARY PER KELAS KLASIFIKASI (QTY & OMSET)
+    # ==========================================
+    st.subheader("Summary Per Kelas Klasifikasi (Qty & Omset)")
+
+    class_perf = (
+        df_prod
+        .groupby("CAT_auto", as_index=False)
+        .agg(
+            total_qty=("total_qty", "sum"),
+            total_revenue=("total_revenue", "sum")
+        )
+        .sort_values("total_revenue", ascending=False)
+    )
+
+    st.dataframe(class_perf)
+
+    st.markdown(
+        "- **total_qty** = total QTY terjual untuk semua produk di kelas tersebut.\n"
+        "- **total_revenue** = total omset untuk semua produk di kelas tersebut."
+    )
+
+    # ==========================================
     # 8. RINGKASAN & GRAFIK DISTRIBUSI KELAS
     # ==========================================
 
@@ -1302,6 +1324,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
