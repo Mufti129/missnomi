@@ -800,28 +800,42 @@ elif analysis == "Klasifikasi Produk":
     p80_rev = df_prod["total_revenue"].quantile(0.8)
     p80_qty = df_prod["total_qty"].quantile(0.8)    # top 20% ≈ kelas A / best seller [web:58][web:61]
 
+    # batas bawah (median) untuk Slow Moving
+    p50_rev = df_prod["total_revenue"].quantile(0.5)
+    p50_qty = df_prod["total_qty"].quantile(0.5)
+
+
     # ==========================================
     # 6. FUNGSI KLASIFIKASI
     # ==========================================
-
     def classify_row(row):
-        # Dead: tidak laku lama atau belum pernah laku
+        # 1) DEAD: tidak laku lama atau belum pernah laku
         if (row["last_sale_date"] < dead_cutoff) or (row["total_qty"] == 0):
             return "Dead"
 
-        # New Launching: umur ≤ 3 bulan (jika Launching ada)
+        # 2) NEW LAUNCHING: umur ≤ 3 bulan (jika Launching ada)
         age = row.get("age_months", np.nan)
         if not np.isnan(age):
             if age <= 3:
                 return "New Launching"
 
-        # Best Seller: top 20% revenue/qty dan laku di ≥ 50% bulan
+        # 3) BEST SELLER: top 20% revenue/qty dan laku di ≥ 50% bulan
         if (row["total_revenue"] >= p80_rev) or (row["total_qty"] >= p80_qty):
             if row["months_sold"] >= max(1, total_months * 0.5):
                 return "Best Seller"
 
-        # Sisanya Slow Moving
-        return "Slow Moving"
+        # 4) SLOW MOVING:
+        #    - masih ada penjualan, tapi jauh di bawah median
+        #      (revenue & qty di bawah p50) ATAU
+        #    - hanya terjual di sedikit bulan
+        low_value = (row["total_revenue"] < p50_rev) and (row["total_qty"] < p50_qty)
+        very_sparse = row["months_sold"] <= max(1, total_months * 0.25)
+
+        if low_value or very_sparse:
+            return "Slow Moving"
+
+        # 5) SISANYA = STANDAR (mid-range)
+        return "Standar"
 
     df_prod["CAT_auto"] = df_prod.apply(classify_row, axis=1)
 
@@ -1324,6 +1338,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
