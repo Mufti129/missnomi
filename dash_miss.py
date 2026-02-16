@@ -778,7 +778,7 @@ elif analysis == "Klasifikasi Produk":
         age = row.get("age_months", np.nan)
         if not np.isnan(age):
             if age <= 3:
-            return "New Launching"
+                return "New Launching"
 
 
         # BEST SELLER: masuk top 20% revenue/qty dan laku di ≥ 50% bulan
@@ -1283,6 +1283,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
