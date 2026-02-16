@@ -104,9 +104,13 @@ def create_lag_features(df, col='value', lags=[1,7,14,30]):
 # -----------------------------
 GSHEET_URL = st.text_input("Masukkan CSV export Google Sheet URL :",
                            value="https://docs.google.com/spreadsheets/d/1APilL0UzyGIBslMDIPF7B2Ftvo7XK0lo6q_d2IOjW1A/export?format=csv&gid=1146076705")
+# --- URL master produk (BARU) ---
+GSHEET_URL_MASTER = st.text_input("Masukkan CSV export Google Sheet MASTER PRODUK :",
+                           value="https://docs.google.com/spreadsheets/d/1SQ-6kW6YHmqVJHWjE4v5pTGrk10niXl1w-Pvt2N70zs/export?format=csv&gid=0")
 
 try:
     df = load_data(GSHEET_URL)
+    df_master = load_data(GSHEET_URL_MASTER)
 except Exception as e:
     st.error(f"Gagal load Google Sheet: {e}")
     st.stop()
@@ -648,11 +652,15 @@ elif analysis == "Profit & Margin":
 
 elif analysis == "Klasifikasi Produk":
 
-    st.header("🏷️ Klasifikasi Produk Otomatis")
+    st.header(" Klasifikasi Produk Otomatis (Berbasis Master + Transaksi)")
 
-    # =========================
-    # FILTER TANGGAL & PRODUK
-    # =========================
+    # ==========================================
+    # 1. FILTER TANGGAL & PERSIAPAN DATA
+    # ==========================================
+
+    # df_trans = df transaksi, sudah ada di app
+    # df_master = df master produk, load dari Google Sheet lain
+
     min_date = df["Tgl. Pesanan"].min()
     max_date = df["Tgl. Pesanan"].max()
 
@@ -664,23 +672,21 @@ elif analysis == "Klasifikasi Produk":
             key="classif_date"
         )
     with col_f2:
-        prod_filter_k = st.multiselect(
-            "Filter Produk (opsional)",
-            options=sorted(df["Nama Barang"].dropna().unique().tolist()),
-            default=None,
-            key="classif_prod"
+        level_class = st.radio(
+            "Level klasifikasi:",
+            ["Per SKU", "Per Nama Produk"],
+            index=0,
+            horizontal=True
         )
 
+    # filter transaksi sesuai periode
     df_k = df[
         (df["Tgl. Pesanan"] >= pd.to_datetime(start_k)) &
         (df["Tgl. Pesanan"] <= pd.to_datetime(end_k))
     ].copy()
 
-    if prod_filter_k:
-        df_k = df_k[df_k["Nama Barang"].isin(prod_filter_k)]
-
     if df_k.empty:
-        st.warning("Tidak ada data pada periode/filter ini.")
+        st.warning("Tidak ada transaksi pada periode ini.")
         st.stop()
 
     # pastikan numerik
@@ -690,27 +696,45 @@ elif analysis == "Klasifikasi Produk":
 
     df_k = df_k.dropna(subset=["QTY", "Nominal"])
 
-    # =========================
-    # PILIH LEVEL KLASIFIKASI
-    # =========================
-    level_class = st.radio(
-        "Level klasifikasi:",
-        ["Per SKU", "Per Nama Barang"],
-        index=0,
-        horizontal=True
-    )
+    # ==========================================
+    # 2. MERGE TRANSAKSI DENGAN MASTER PRODUK
+    # ==========================================
 
-    # identitas produk (sesuai pilihan user)
-    if level_class == "Per SKU" and "SKU" in df_k.columns:
-        group_cols = ["SKU", "Nama Barang"]
-    else:
-        group_cols = ["Nama Barang"]
+    # pastikan kolom join ada
+    if "SKU" not in df_k.columns or "SKU" not in df_master.columns:
+        st.error("Kolom 'SKU' harus ada di transaksi dan master produk.")
+        st.stop()
 
-    # =========================
-    # SIAPKAN KOLIM LAUNCHING & LAINNYA
-    # =========================
-    if "Launching" in df_k.columns:
-        df_k["Launching"] = pd.to_datetime(df_k["Launching"], errors="coerce")
+    # normalisasi nama kolom master
+    df_m = df_master.rename(
+        columns={
+            "Nama Produk": "Nama Produk Master",
+            "Category Name": "Category Name",
+            "Sell Price": "Sell Price",
+            "TANGGAL LAUNCHING": "TANGGAL_LAUNCHING"
+        }
+    ).copy()
+
+    df_m["TANGGAL_LAUNCHING"] = pd.to_datetime(df_m["TANGGAL_LAUNCHING"], errors="coerce")
+
+    # join transaksi + master di SKU
+    df_merged = df_k.merge(df_m, on="SKU", how="left")
+
+    # ==========================================
+    # 3. TENTUKAN LEVEL KLASIFIKASI
+    # ==========================================
+
+    if level_class == "Per SKU":
+        group_cols = ["SKU"]
+        name_col = "Nama Produk Master" if "Nama Produk Master" in df_merged.columns else "Nama Barang"
+    else:  # Per Nama Produk
+        # pakai Nama Produk dari master; fallback ke Nama Barang transaksi
+        name_col = "Nama Produk Master" if "Nama Produk Master" in df_merged.columns else "Nama Barang"
+        group_cols = [name_col]
+
+    # ==========================================
+    # 4. AGREGASI METRIK PENJUALAN PER PRODUK
+    # ==========================================
 
     # total bulan dalam periode analisis
     total_months = (
@@ -718,86 +742,98 @@ elif analysis == "Klasifikasi Produk":
         + 1
     )
 
-    # =========================
-    # AGREGASI METRIK PER PRODUK
-    # =========================
     df_prod = (
-        df_k
+        df_merged
         .groupby(group_cols)
         .agg(
             total_revenue=("Nominal", "sum"),
             total_qty=("QTY", "sum"),
             last_sale_date=("Tgl. Pesanan", "max"),
             first_sale_date=("Tgl. Pesanan", "min"),
-            months_sold=("Tgl. Pesanan", lambda x: x.dt.to_period("M").nunique()),
+            months_sold=("Tgl. Pesanan", lambda x: x.dt.to_period("M").nunique())
         )
         .reset_index()
     )
 
-    # bawa info Launching, CATEGORY, COLLECTION, CAT jika ada
-    extra_cols = []
-    for c in ["Launching", "CATEGORY", "COLLECTION", "CAT"]:
-        if c in df_k.columns:
-            extra_cols.append(c)
+    # bawa atribut master (Category, Warna, Size, HPP, Sell Price, Launching)
+    master_attr_cols = [
+        "Nama Produk Master", "Category Name", "Warna", "Size",
+        "HPP", "Sell Price", "TANGGAL_LAUNCHING"
+    ]
+    master_attr_cols = [c for c in master_attr_cols if c in df_merged.columns]
 
-    if extra_cols:
-        df_extra = (
-            df_k[group_cols + extra_cols]
-            .drop_duplicates(subset=group_cols)
+    if level_class == "Per SKU":
+        key_for_merge = ["SKU"]
+    else:
+        key_for_merge = [name_col]
+
+    if master_attr_cols:
+        df_attr = (
+            df_merged[key_for_merge + master_attr_cols]
+            .drop_duplicates(subset=key_for_merge)
         )
-        df_prod = df_prod.merge(df_extra, on=group_cols, how="left")
+        df_prod = df_prod.merge(df_attr, on=key_for_merge, how="left")
 
-    # =========================
-    # METRIK BANTUAN UNTUK KLASIFIKASI
-    # =========================
+    # ==========================================
+    # 5. METRIK BANTUAN (AGE, DEAD CUTOFF, THRESHOLD)
+    # ==========================================
+
     today = df_prod["last_sale_date"].max()
-    dead_cutoff = today - pd.DateOffset(months=6)   # definisi Dead: tidak laku ≥ 6 bulan [web:63]
+    dead_cutoff = today - pd.DateOffset(months=6)   # Dead: tidak laku ≥ 6 bulan
 
-    # umur produk dari Launching
-    if "Launching" in df_prod.columns:
-        diff = today.to_period("M") - df_prod["Launching"].dt.to_period("M")
-    # ubah ke numeric, NaN kalau Launching kosong / invalid
+    if "TANGGAL_LAUNCHING" in df_prod.columns:
+        diff = today.to_period("M") - df_prod["TANGGAL_LAUNCHING"].dt.to_period("M")
         df_prod["age_months"] = pd.to_numeric(diff, errors="coerce")
     else:
         df_prod["age_months"] = np.nan
 
-
-    # threshold Best Seller: top 20% revenue / qty (approx. ABC) [web:58][web:61]
     p80_rev = df_prod["total_revenue"].quantile(0.8)
     p80_qty = df_prod["total_qty"].quantile(0.8)
 
-    # =========================
-    # FUNGSI KLASIFIKASI
-    # =========================
+    # ==========================================
+    # 6. FUNGSI KLASIFIKASI
+    # ==========================================
+
     def classify_row(row):
-        # DEAD: tidak ada penjualan dalam 6 bulan terakhir atau tidak pernah terjual
+        # Dead
         if (row["last_sale_date"] < dead_cutoff) or (row["total_qty"] == 0):
             return "Dead"
 
-        # NEW LAUNCHING: umur ≤ 3 bulan sejak Launching (jika Launching ada)
+        # New Launching (umur ≤ 3 bulan jika launching ada)
         age = row.get("age_months", np.nan)
         if not np.isnan(age):
             if age <= 3:
                 return "New Launching"
 
-
-        # BEST SELLER: masuk top 20% revenue/qty dan laku di ≥ 50% bulan
+        # Best Seller: top 20% revenue/qty + laku di ≥ 50% bulan
         if (row["total_revenue"] >= p80_rev) or (row["total_qty"] >= p80_qty):
             if row["months_sold"] >= max(1, total_months * 0.5):
                 return "Best Seller"
 
-        # sisanya Slow Moving
+        # Sisanya Slow Moving
         return "Slow Moving"
 
     df_prod["CAT_auto"] = df_prod.apply(classify_row, axis=1)
 
-    # =========================
-    # TABEL KLASIFIKASI
-    # =========================
+    # ==========================================
+    # 7. TABEL HASIL KLASIFIKASI
+    # ==========================================
+
     st.subheader("Tabel Klasifikasi Produk")
 
-    show_cols = group_cols + [
-        "CATEGORY", "COLLECTION", "CAT", "CAT_auto",
+    show_cols = []
+    # identitas
+    if "SKU" in df_prod.columns:
+        show_cols.append("SKU")
+    if name_col in df_prod.columns:
+        show_cols.append(name_col)
+    # atribut master
+    for c in ["Category Name", "Warna", "Size", "HPP", "Sell Price", "TANGGAL_LAUNCHING"]:
+        if c in df_prod.columns:
+            show_cols.append(c)
+    # metrik & kelas
+    show_cols += [
+        "CAT_auto",
         "total_revenue", "total_qty",
         "months_sold", "age_months",
         "first_sale_date", "last_sale_date",
@@ -805,8 +841,8 @@ elif analysis == "Klasifikasi Produk":
     show_cols = [c for c in show_cols if c in df_prod.columns]
 
     st.caption(
-        f"Periode analisis: {start_k} s/d {end_k}  |  "
-        f"Level: {'SKU + Nama Barang' if level_class == 'Per SKU' else 'Nama Barang'}"
+        f"Periode: {start_k} s/d {end_k}  |  "
+        f"Level: {'Per SKU' if level_class == 'Per SKU' else 'Per Nama Produk'}"
     )
 
     st.dataframe(
@@ -818,14 +854,17 @@ elif analysis == "Klasifikasi Produk":
                 "total_qty": "{:,.0f}",
                 "age_months": "{:,.0f}",
                 "months_sold": "{:,.0f}",
+                "HPP": "{:,.0f}",
+                "Sell Price": "{:,.0f}",
             },
             na_rep="-"
         )
     )
 
-    # =========================
-    # RINGKASAN JUMLAH PRODUK PER KELAS
-    # =========================
+    # ==========================================
+    # 8. RINGKASAN & GRAFIK DISTRIBUSI KELAS
+    # ==========================================
+
     st.subheader("Ringkasan Jumlah Produk per Kelas")
 
     class_count = (
@@ -844,24 +883,10 @@ elif analysis == "Klasifikasi Produk":
     ax_c1.grid(axis="y", alpha=0.3)
     st.pyplot(fig_c1)
 
-    # =========================
-    # PERBANDINGAN CAT MANUAL VS AUTO (JIKA ADA)
-    # =========================
-    if "CAT" in df_prod.columns:
-        st.subheader("Perbandingan Label CAT Manual vs Auto")
+    # ==========================================
+    # 9. INSIGHT OTOMATIS
+    # ==========================================
 
-        cross_tab = pd.crosstab(df_prod["CAT"], df_prod["CAT_auto"])
-        st.dataframe(cross_tab)
-
-        st.markdown(
-            "- Sel dengan angka besar menunjukkan kesesuaian antara label manual dan otomatis.\n"
-            "- Perhatikan baris/kolom yang tidak sesuai (misal manual 'Best seller' tapi auto 'Slow Moving') "
-            "sebagai kandidat review kategori produk."
-        )
-
-    # =========================
-    # INSIGHT OTOMATIS
-    # =========================
     st.subheader("Insight Otomatis")
 
     total_prod = len(df_prod)
@@ -893,7 +918,7 @@ elif analysis == "Klasifikasi Produk":
         f"**{n_new} New Launching ({share_new:.1f}%)**, "
         f"**{n_slow} Slow Moving ({share_slow:.1f}%)**, "
         f"dan **{n_dead} Dead ({share_dead:.1f}%)**.\n"
-        f"- Kelas **Best Seller** menyumbang sekitar **{best_rev_share:.1f}%** dari total revenue pada periode ini."
+        f"- Kelas **Best Seller** menyumbang sekitar **{best_rev_share:.1f}%** dari total revenue periode ini."
     )
 
     if share_dead > 20:
@@ -904,51 +929,51 @@ elif analysis == "Klasifikasi Produk":
     if share_slow > 40:
         st.warning(
             f"Porsi **Slow Moving** cukup tinggi ({share_slow:.1f}%). "
-            "Pertimbangkan promo, bundling, atau pengurangan pembelian ulang untuk produk ini."
+            "Pertimbangkan promo, bundling, atau pengurangan pembelian ulang."
         )
     if share_best < 10:
         st.info(
             f"Produk **Best Seller** masih sedikit ({share_best:.1f}% dari total SKU). "
-            "Bisa jadi portofolio terlalu tersebar, atau definisi threshold perlu disesuaikan."
+            "Bisa jadi portofolio terlalu tersebar, atau threshold Best Seller perlu di-adjust."
         )
 
-    # =========================
-    # PENJELASAN METODE & RULE OF THUMB
-    # =========================
-    with st.expander("ℹ️ Penjelasan Metode & Rule of Thumb", expanded=False):
+    # ==========================================
+    # 10. PENJELASAN METODE & RULE OF THUMB
+    # ==========================================
+
+    with st.expander("ℹ️ Metodologi & Rule of Thumb", expanded=False):
         st.markdown(
             """
-            **Metodologi yang digunakan:**
+            **Metodologi:**
+            - Menggabungkan data transaksi dengan *master produk* berdasarkan `SKU`, sehingga atribut seperti
+              Category, Warna, Size, HPP, Sell Price, dan Tanggal Launching diambil dari master produk. [web:51][web:72]
+            - Menghitung metrik penjualan per produk selama periode analisis:
+              `total_revenue`, `total_qty`, `months_sold`, `first_sale_date`, `last_sale_date`.
+            - Mengukur umur produk (`age_months`) dari Tanggal Launching, serta mendeteksi produk yang tidak
+              laku dalam ≥ 6 bulan terakhir sebagai kandidat **dead stock**. [web:63]
+            - Menentukan **Best Seller** berdasarkan percentile 80% (top 20%) dari distribusi revenue/qty, 
+              mirip pendekatan ABC classification. [web:58][web:61]
 
-            - Menghitung **total penjualan** per produk (`total_revenue`, `total_qty`) selama periode analisis, 
-              seperti pendekatan **ABC classification** di manajemen inventory. [web:58][web:61]
-            - Mengukur **frekuensi terjual** (`months_sold`), yaitu berapa banyak bulan unik produk itu punya penjualan.
-            - Menggunakan **umur produk** dari kolom *Launching* (`age_months`) jika tersedia.
-            - Mengidentifikasi kandidat **Dead stock** sebagai produk yang tidak punya penjualan dalam ≥ 6 bulan terakhir. [web:63]
-
-            **Rule of thumb klasifikasi:**
-
-            - **Dead**  
-              - Tidak ada penjualan dalam 6 bulan terakhir, atau `total_qty = 0` pada periode analisis.  
-            - **New Launching**  
-              - Umur produk ≤ 3 bulan sejak tanggal Launching.  
-            - **Best Seller**  
+            **Rule of Thumb Kelas:**
+            - **Dead**: tidak ada penjualan dalam 6 bulan terakhir atau total_qty = 0 pada periode analisis.  
+            - **New Launching**: umur produk ≤ 3 bulan sejak Tanggal Launching.  
+            - **Best Seller**: 
               - Bukan New Launching dan bukan Dead.  
-              - Masuk **top 20%** produk berdasarkan `total_revenue` atau `total_qty` (≥ percentile 80).  
-              - Terjual di ≥ ~50% bulan analisis (stabil, bukan hanya sekali order besar).  
-            - **Slow Moving**  
+              - Masuk top 20% produk berdasarkan total_revenue atau total_qty.  
+              - Terjual di ≥ 50% bulan dalam periode analisis (stabil).  
+            - **Slow Moving**: 
               - Bukan New Launching dan bukan Dead.  
-              - Di bawah batas Best Seller atau hanya terjual di sedikit bulan.
+              - Tidak memenuhi kriteria Best Seller (nilai dan frekuensi penjualan relatif rendah).  
 
-            Nilai 3 bulan (New Launching), 6 bulan (Dead), dan percentile 80% untuk Best Seller adalah
-            rule of thumb yang lazim di praktik inventory & portfolio analysis dan dapat disesuaikan dengan
-            karakter bisnis Anda (misalnya fashion yang cepat berubah vs produk durable yang siklusnya lebih panjang). [web:57][web:60][web:65]
+            Nilai 3 bulan (New), 6 bulan (Dead), dan percentile 80% untuk Best Seller adalah rule of thumb
+            yang umum di inventory & portfolio analysis dan bisa disesuaikan dengan pola bisnis Anda.
             """
         )
 
-    # =========================
-    # DOWNLOAD HASIL KLASIFIKASI
-    # =========================
+    # ==========================================
+    # 11. DOWNLOAD HASIL KLASIFIKASI
+    # ==========================================
+
     st.subheader("Download Hasil Klasifikasi")
 
     export_cols = show_cols.copy()
@@ -956,7 +981,6 @@ elif analysis == "Klasifikasi Produk":
         export_cols.append("CAT_auto")
 
     df_export = df_prod[export_cols].sort_values("total_revenue", ascending=False)
-
     csv_bytes = df_export.to_csv(index=False).encode("utf-8")
 
     st.download_button(
@@ -965,7 +989,6 @@ elif analysis == "Klasifikasi Produk":
         file_name=f"klasifikasi_produk_{start_k}_sd_{end_k}.csv",
         mime="text/csv"
     )
-
 
 
 # -----------------------------
@@ -1283,6 +1306,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
