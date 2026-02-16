@@ -653,7 +653,7 @@ elif analysis == "Profit & Margin":
 ## Menu klasifikasi ##
 elif analysis == "Klasifikasi Produk":
 
-    st.header("Klasifikasi Produk Otomatis (Master + Transaksi)")
+    st.header("🏷️ Klasifikasi Produk Otomatis (Master + Transaksi)")
 
     # ==========================================
     # 1. FILTER TANGGAL & LEVEL KLASIFIKASI
@@ -687,7 +687,7 @@ elif analysis == "Klasifikasi Produk":
         st.warning("Tidak ada transaksi pada periode ini.")
         st.stop()
 
-    # pastikan numerik
+    # pastikan QTY & Nominal numerik
     for col in ["QTY", "Nominal"]:
         if col in df_k.columns:
             df_k[col] = pd.to_numeric(df_k[col], errors="coerce")
@@ -714,6 +714,7 @@ elif analysis == "Klasifikasi Produk":
     df_m["TANGGAL_LAUNCHING"] = pd.to_datetime(df_m["TANGGAL_LAUNCHING"], errors="coerce")
 
     df_merged = df_k.merge(df_m, on="SKU", how="left")
+    df_merged = df_merged.reset_index(drop=True)
 
     # ==========================================
     # 3. TENTUKAN LEVEL KLASIFIKASI
@@ -747,10 +748,8 @@ elif analysis == "Klasifikasi Produk":
         )
         .reset_index()
     )
+    df_prod = df_prod.reset_index(drop=True)
 
-    # ==========================================
-    # 5. BAWA ATRIBUT MASTER (Category, HPP, dll.)
-    # ==========================================
     # ==========================================
     # 5. BAWA ATRIBUT MASTER (Category, HPP, dll.)
     # ==========================================
@@ -768,18 +767,9 @@ elif analysis == "Klasifikasi Produk":
 
     if master_attr_cols:
         cols_attr = key_for_merge + master_attr_cols
-
-        # pastikan tidak ada index level aneh
         df_attr = df_merged[cols_attr].copy()
         df_attr = df_attr.reset_index(drop=True)
-
-        # satu baris per key
         df_attr = df_attr.drop_duplicates(subset=key_for_merge)
-
-        # hilangkan kemungkinan key dobel sebagai kolom/index
-        df_prod = df_prod.reset_index(drop=True)
-        # jika key belum ada di df_prod (misal name_col), tambahkan dari df_attr via map
-        # tapi karena kita memang akan merge, cukup pastikan tidak ada key sebagai index
 
         df_prod = df_prod.merge(
             df_attr,
@@ -787,7 +777,6 @@ elif analysis == "Klasifikasi Produk":
             how="left"
         )
 
-  
     # ==========================================
     # 6. METRIK BANTUAN (AGE, DEAD CUTOFF, THRESHOLD)
     # ==========================================
@@ -813,7 +802,7 @@ elif analysis == "Klasifikasi Produk":
         if (row["last_sale_date"] < dead_cutoff) or (row["total_qty"] == 0):
             return "Dead"
 
-        # New Launching: umur ≤ 3 bulan (jika launching ada)
+        # New Launching: umur ≤ 3 bulan (jika Launching ada)
         age = row.get("age_months", np.nan)
         if not np.isnan(age):
             if age <= 3:
@@ -859,17 +848,8 @@ elif analysis == "Klasifikasi Produk":
     )
 
     df_show = df_prod[show_cols].sort_values("total_revenue", ascending=False)
-    numeric_fmt = {}
-    for col in ["total_revenue", "total_qty", "age_months", "months_sold", "HPP", "Sell Price"]:
-        if col in df_show.columns:
-            numeric_fmt[col] = "{:,.0f}"
+    st.dataframe(df_show)
 
-    st.dataframe(
-        df_show.style.format(numeric_fmt, na_rep="-")
-    )
-
-    #
-    
     # ==========================================
     # 9. RINGKASAN & GRAFIK DISTRIBUSI KELAS
     # ==========================================
@@ -947,7 +927,7 @@ elif analysis == "Klasifikasi Produk":
         )
 
     # ==========================================
-    # 11. PENJELASAN METODOLOGI & RULE OF THUMB
+    # 11. METODOLOGI & RULE OF THUMB
     # ==========================================
 
     with st.expander("ℹ️ Metodologi & Rule of Thumb", expanded=False):
@@ -1315,6 +1295,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
