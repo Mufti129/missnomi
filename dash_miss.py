@@ -154,7 +154,7 @@ lstm_toggle = st.sidebar.checkbox("Enable LSTM (only if TensorFlow is installed)
 
 # Analysis selector
 st.sidebar.markdown("### Analisis")
-analysis = st.sidebar.radio("Pilih Analisis:", ["Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk"])
+analysis = st.sidebar.radio("Pilih Analisis:", ["Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk","Profit & Margin"])
 
 # -----------------------------
 # Apply filters
@@ -529,6 +529,109 @@ elif analysis == "Pareto Produk":
             st.markdown(
                 "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
             )
+elif analysis == "Profit & Margin":
+
+    st.header("💰 Profit & Margin Produk")
+
+    # Cek kolom HPP & HARGA JUAL
+    if ("HPP" not in df_filtered.columns) or ("HARGA JUAL" not in df_filtered.columns):
+        st.error("Kolom 'HPP' dan/atau 'HARGA JUAL' tidak ditemukan di data. Tidak bisa hitung profit.")
+        st.stop()
+
+    df_pm = df_filtered.copy()
+
+    # Hitung COGS dan Profit
+    df_pm["Revenue"] = df_pm["Nominal"]  # jika Nominal sudah = QTY * HARGA JUAL
+    df_pm["COGS"] = df_pm["HPP"] * df_pm["QTY"]
+    df_pm["Profit"] = df_pm["Revenue"] - df_pm["COGS"]
+    df_pm["Margin_%"] = df_pm["Profit"] / df_pm["Revenue"] * 100
+    df_pm["Margin_%"] = df_pm["Margin_%"].replace([np.inf, -np.inf], np.nan)
+
+    # Agregasi per produk (SKU + Nama Barang)
+    group_cols = []
+    if "SKU" in df_pm.columns:
+        group_cols.append("SKU")
+    group_cols.append("Nama Barang")
+
+    df_prod = (
+        df_pm
+        .groupby(group_cols)[["QTY", "Revenue", "COGS", "Profit"]]
+        .sum()
+        .reset_index()
+    )
+
+    df_prod["Margin_%"] = df_prod["Profit"] / df_prod["Revenue"] * 100
+    df_prod["Margin_%"] = df_prod["Margin_%"].replace([np.inf, -np.inf], np.nan)
+
+    # KPI global
+    total_revenue = df_prod["Revenue"].sum()
+    total_cogs = df_prod["COGS"].sum()
+    total_profit = df_prod["Profit"].sum()
+    overall_margin = total_profit / total_revenue * 100 if total_revenue > 0 else 0
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Revenue", f"{total_revenue:,.0f}")
+    col2.metric("Total COGS", f"{total_cogs:,.0f}")
+    col3.metric("Total Profit", f"{total_profit:,.0f}")
+
+    st.metric("Overall Margin %", f"{overall_margin:.2f}%")
+
+    st.markdown("---")
+
+    # Tabel Top N produk berdasarkan Profit
+    st.subheader("Top Produk berdasarkan Profit")
+
+    top_n_pm = st.slider("Tampilkan TOP berapa produk:", 5, 50, 20)
+
+    df_prod_sorted = df_prod.sort_values("Profit", ascending=False).head(top_n_pm)
+
+    st.dataframe(
+        df_prod_sorted
+        .style
+        .format(
+            {
+                "QTY": "{:,.0f}",
+                "Revenue": "{:,.0f}",
+                "COGS": "{:,.0f}",
+                "Profit": "{:,.0f}",
+                "Margin_%": "{:,.2f}%"
+            }
+        )
+    )
+
+    # Grafik Profit per Produk
+    st.subheader("Grafik Profit per Produk (Top N)")
+
+    fig_p1, ax_p1 = plt.subplots(figsize=(12, 5))
+    x = np.arange(len(df_prod_sorted))
+    label_x = (
+        df_prod_sorted["SKU"].astype(str) + " - " + df_prod_sorted["Nama Barang"].astype(str)
+        if "SKU" in df_prod_sorted.columns
+        else df_prod_sorted["Nama Barang"].astype(str)
+    )
+
+    ax_p1.bar(x, df_prod_sorted["Profit"], color="#2ca02c")
+    ax_p1.set_xticks(x)
+    ax_p1.set_xticklabels(label_x, rotation=45, ha="right")
+    ax_p1.set_ylabel("Profit")
+    ax_p1.set_xlabel("Produk")
+    ax_p1.set_title("Top Produk berdasarkan Profit")
+    ax_p1.grid(axis="y", alpha=0.3)
+    st.pyplot(fig_p1)
+
+    # Margin vs Revenue (scatter)
+    st.subheader("Margin vs Revenue (per Produk)")
+
+    fig_p2, ax_p2 = plt.subplots(figsize=(8, 5))
+    ax_p2.scatter(df_prod["Revenue"], df_prod["Margin_%"], alpha=0.7)
+    ax_p2.set_xlabel("Revenue")
+    ax_p2.set_ylabel("Margin %")
+    ax_p2.set_title("Sebaran Margin vs Revenue")
+    ax_p2.grid(True, alpha=0.3)
+    st.pyplot(fig_p2)
+
+    st.info("Gunakan menu filter di sidebar (tanggal & produk) untuk fokus pada periode / item tertentu ketika menganalisis profit & margin.")
+
 
 
 # -----------------------------
@@ -846,5 +949,6 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
