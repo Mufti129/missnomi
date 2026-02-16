@@ -717,6 +717,15 @@ elif analysis == "Klasifikasi Produk":
     df_merged = df_k.merge(df_m, on="SKU", how="left")
     df_merged = df_merged.reset_index(drop=True)
 
+    # ====== Cek aja ======
+    st.write("Kolom df_master:", df_master.columns.tolist())
+    st.write("Sample TANGGAL LAUNCHING master:", df_master["TANGGAL LAUNCHING"].head())
+
+    st.write("Kolom df_merged:", df_merged.columns.tolist())
+    if "TANGGAL_LAUNCHING" in df_merged.columns:
+        st.write("Sample TANGGAL_LAUNCHING merged:",
+                 df_merged["TANGGAL_LAUNCHING"].head())
+    # ============================ 
     # ==========================================
     # 3. TENTUKAN LEVEL KLASIFIKASI
     # ==========================================
@@ -1278,6 +1287,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
