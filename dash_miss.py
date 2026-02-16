@@ -695,7 +695,7 @@ elif analysis == "Klasifikasi Produk":
     df_k = df_k.dropna(subset=["QTY", "Nominal"])
 
     # ==========================================
-    # 2. MERGE TRANSAKSI DENGAN MASTER PRODUK
+    # 2. MERGE TRANSAKSI + MASTER SEKALI SAJA
     # ==========================================
 
     if "SKU" not in df_k.columns or "SKU" not in df_master.columns:
@@ -713,6 +713,7 @@ elif analysis == "Klasifikasi Produk":
 
     df_m["TANGGAL_LAUNCHING"] = pd.to_datetime(df_m["TANGGAL_LAUNCHING"], errors="coerce")
 
+    # merge satu kali, setelah itu semua agregasi pakai df_merged
     df_merged = df_k.merge(df_m, on="SKU", how="left")
     df_merged = df_merged.reset_index(drop=True)
 
@@ -728,7 +729,7 @@ elif analysis == "Klasifikasi Produk":
         group_cols = [name_col]
 
     # ==========================================
-    # 4. AGREGASI METRIK PENJUALAN PER PRODUK
+    # 4. AGREGASI METRIK + ATRIBUT SEKALIGUS
     # ==========================================
 
     total_months = (
@@ -736,49 +737,31 @@ elif analysis == "Klasifikasi Produk":
         + 1
     )
 
+    agg_dict = {
+        "total_revenue": ("Nominal", "sum"),
+        "total_qty": ("QTY", "sum"),
+        "last_sale_date": ("Tgl. Pesanan", "max"),
+        "first_sale_date": ("Tgl. Pesanan", "min"),
+        "months_sold": ("Tgl. Pesanan", lambda x: x.dt.to_period("M").nunique()),
+    }
+
+    # atribut master: ambil nilai pertama (asumsi konsisten per SKU)
+    for c in ["Nama Produk Master", "Category Name", "Warna", "Size", "HPP", "Sell Price", "TANGGAL_LAUNCHING"]:
+        if c in df_merged.columns:
+            agg_dict[c] = (c, "first")
+
     df_prod = (
         df_merged
         .groupby(group_cols)
-        .agg(
-            total_revenue=("Nominal", "sum"),
-            total_qty=("QTY", "sum"),
-            last_sale_date=("Tgl. Pesanan", "max"),
-            first_sale_date=("Tgl. Pesanan", "min"),
-            months_sold=("Tgl. Pesanan", lambda x: x.dt.to_period("M").nunique())
-        )
+        .agg(**agg_dict)
         .reset_index()
     )
+
+    # name_col sudah pasti ada di df_prod (karena join & agg first)
     df_prod = df_prod.reset_index(drop=True)
 
     # ==========================================
-    # 5. BAWA ATRIBUT MASTER (Category, HPP, dll.)
-    # ==========================================
-
-    master_attr_cols = [
-        "Nama Produk Master", "Category Name", "Warna", "Size",
-        "HPP", "Sell Price", "TANGGAL_LAUNCHING"
-    ]
-    master_attr_cols = [c for c in master_attr_cols if c in df_merged.columns]
-
-    if level_class == "Per SKU":
-        key_for_merge = ["SKU"]
-    else:
-        key_for_merge = [name_col]
-
-    if master_attr_cols:
-        cols_attr = key_for_merge + master_attr_cols
-        df_attr = df_merged[cols_attr].copy()
-        df_attr = df_attr.reset_index(drop=True)
-        df_attr = df_attr.drop_duplicates(subset=key_for_merge)
-
-        df_prod = df_prod.merge(
-            df_attr,
-            on=key_for_merge,
-            how="left"
-        )
-
-    # ==========================================
-    # 6. METRIK BANTUAN (AGE, DEAD CUTOFF, THRESHOLD)
+    # 5. METRIK BANTUAN (AGE, DEAD CUTOFF, THRESHOLD)
     # ==========================================
 
     today = df_prod["last_sale_date"].max()
@@ -794,7 +777,7 @@ elif analysis == "Klasifikasi Produk":
     p80_qty = df_prod["total_qty"].quantile(0.8)    # top 20% ≈ kelas A / best seller [web:58][web:61]
 
     # ==========================================
-    # 7. FUNGSI KLASIFIKASI
+    # 6. FUNGSI KLASIFIKASI
     # ==========================================
 
     def classify_row(row):
@@ -819,13 +802,13 @@ elif analysis == "Klasifikasi Produk":
     df_prod["CAT_auto"] = df_prod.apply(classify_row, axis=1)
 
     # ==========================================
-    # 8. TABEL HASIL KLASIFIKASI
+    # 7. TABEL HASIL KLASIFIKASI
     # ==========================================
 
     st.subheader("Tabel Klasifikasi Produk")
 
     show_cols = []
-    if "SKU" in df_prod.columns and level_class == "Per SKU":
+    if level_class == "Per SKU" and "SKU" in df_prod.columns:
         show_cols.append("SKU")
     if name_col in df_prod.columns:
         show_cols.append(name_col)
@@ -851,7 +834,7 @@ elif analysis == "Klasifikasi Produk":
     st.dataframe(df_show)
 
     # ==========================================
-    # 9. RINGKASAN & GRAFIK DISTRIBUSI KELAS
+    # 8. RINGKASAN & GRAFIK DISTRIBUSI KELAS
     # ==========================================
 
     st.subheader("Ringkasan Jumlah Produk per Kelas")
@@ -873,7 +856,7 @@ elif analysis == "Klasifikasi Produk":
     st.pyplot(fig_c1)
 
     # ==========================================
-    # 10. INSIGHT OTOMATIS
+    # 9. INSIGHT OTOMATIS
     # ==========================================
 
     st.subheader("Insight Otomatis")
@@ -927,7 +910,7 @@ elif analysis == "Klasifikasi Produk":
         )
 
     # ==========================================
-    # 11. METODOLOGI & RULE OF THUMB
+    # 10. METODOLOGI & RULE OF THUMB
     # ==========================================
 
     with st.expander("ℹ️ Metodologi & Rule of Thumb", expanded=False):
@@ -960,7 +943,7 @@ elif analysis == "Klasifikasi Produk":
         )
 
     # ==========================================
-    # 12. DOWNLOAD HASIL KLASIFIKASI
+    # 11. DOWNLOAD HASIL KLASIFIKASI
     # ==========================================
 
     st.subheader("Download Hasil Klasifikasi")
@@ -1295,6 +1278,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
