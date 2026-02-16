@@ -718,13 +718,13 @@ elif analysis == "Klasifikasi Produk":
     df_merged = df_merged.reset_index(drop=True)
 
     # ====== Cek aja ======
-    st.write("Kolom df_master:", df_master.columns.tolist())
-    st.write("Sample TANGGAL LAUNCHING master:", df_master["TANGGAL LAUNCHING"].head())
+    #st.write("Kolom df_master:", df_master.columns.tolist())
+    #st.write("Sample TANGGAL LAUNCHING master:", df_master["TANGGAL LAUNCHING"].head())
 
-    st.write("Kolom df_merged:", df_merged.columns.tolist())
-    if "TANGGAL_LAUNCHING" in df_merged.columns:
-        st.write("Sample TANGGAL_LAUNCHING merged:",
-                 df_merged["TANGGAL_LAUNCHING"].head())
+   # st.write("Kolom df_merged:", df_merged.columns.tolist())
+  #  if "TANGGAL_LAUNCHING" in df_merged.columns:
+ #       st.write("Sample TANGGAL_LAUNCHING merged:",
+#                 df_merged["TANGGAL_LAUNCHING"].head())#
     # ============================ 
     # ==========================================
     # 3. TENTUKAN LEVEL KLASIFIKASI
@@ -767,18 +767,33 @@ elif analysis == "Klasifikasi Produk":
     )
 
     # name_col sudah pasti ada di df_prod (karena join & agg first)
-    df_prod = df_prod.reset_index(drop=True)
+   # df_prod = df_prod.reset_index(drop=True)
 
     # ==========================================
     # 5. METRIK BANTUAN (AGE, DEAD CUTOFF, THRESHOLD)
     # ==========================================
+    #today = df_prod["last_sale_date"].max()
+    #dead_cutoff = today - pd.DateOffset(months=6)   # Dead: tidak laku ≥ 6 bulan [web:63]
+
+    #if "TANGGAL_LAUNCHING" in df_prod.columns:
+      #  diff = today.to_period("M") - df_prod["TANGGAL_LAUNCHING"].dt.to_period("M")
+     #   df_prod["age_months"] = pd.to_numeric(diff, errors="coerce")
+    #else:
+     #   df_prod["age_months"] = np.nan
 
     today = df_prod["last_sale_date"].max()
-    dead_cutoff = today - pd.DateOffset(months=6)   # Dead: tidak laku ≥ 6 bulan [web:63]
+    dead_cutoff = today - pd.DateOffset(months=6)
 
     if "TANGGAL_LAUNCHING" in df_prod.columns:
-        diff = today.to_period("M") - df_prod["TANGGAL_LAUNCHING"].dt.to_period("M")
-        df_prod["age_months"] = pd.to_numeric(diff, errors="coerce")
+        launch = pd.to_datetime(df_prod["TANGGAL_LAUNCHING"], errors="coerce")
+        last = pd.to_datetime(today)
+
+        # umur dalam bulan: (year diff * 12) + (month diff)
+        age_months = (last.year - launch.dt.year) * 12 + (last.month - launch.dt.month)
+        # kalau launching NaT → age_months jadi NaN
+        age_months = age_months.where(~launch.isna(), np.nan)
+
+        df_prod["age_months"] = age_months
     else:
         df_prod["age_months"] = np.nan
 
@@ -1287,6 +1302,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
