@@ -751,6 +751,9 @@ elif analysis == "Klasifikasi Produk":
     # ==========================================
     # 5. BAWA ATRIBUT MASTER (Category, HPP, dll.)
     # ==========================================
+    # ==========================================
+    # 5. BAWA ATRIBUT MASTER (Category, HPP, dll.)
+    # ==========================================
 
     master_attr_cols = [
         "Nama Produk Master", "Category Name", "Warna", "Size",
@@ -765,17 +768,26 @@ elif analysis == "Klasifikasi Produk":
 
     if master_attr_cols:
         cols_attr = key_for_merge + master_attr_cols
-        df_attr = (
-            df_merged[cols_attr]
-            .drop_duplicates(subset=key_for_merge)
-            .reset_index(drop=True)
-        )
+
+        # pastikan tidak ada index level aneh
+        df_attr = df_merged[cols_attr].copy()
+        df_attr = df_attr.reset_index(drop=True)
+
+        # satu baris per key
+        df_attr = df_attr.drop_duplicates(subset=key_for_merge)
+
+        # hilangkan kemungkinan key dobel sebagai kolom/index
+        df_prod = df_prod.reset_index(drop=True)
+        # jika key belum ada di df_prod (misal name_col), tambahkan dari df_attr via map
+        # tapi karena kita memang akan merge, cukup pastikan tidak ada key sebagai index
+
         df_prod = df_prod.merge(
             df_attr,
             on=key_for_merge,
             how="left"
         )
 
+  
     # ==========================================
     # 6. METRIK BANTUAN (AGE, DEAD CUTOFF, THRESHOLD)
     # ==========================================
@@ -1303,6 +1315,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
