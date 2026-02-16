@@ -415,44 +415,75 @@ elif analysis == "Monitoring Produk":
         st.markdown(
             "Tidak ditemukan produk dengan penjualan nol berkepanjangan."
         )
-
 elif analysis == "Pareto Produk":
 
     st.header("Pareto Analisis Produk")
 
-    # Pilih metrik
+    # =========================
+    # FILTER TANGGAL KHUSUS
+    # =========================
+    min_date_p = df["Tgl. Pesanan"].min()
+    max_date_p = df["Tgl. Pesanan"].max()
+
+    start_p, end_p = st.date_input(
+        "Pilih Periode Analisis Pareto",
+        value=(min_date_p, max_date_p)
+    )
+
+    df_pareto_base = df[
+        (df["Tgl. Pesanan"] >= pd.to_datetime(start_p)) &
+        (df["Tgl. Pesanan"] <= pd.to_datetime(end_p))
+    ].copy()
+
+    # Kalau mau tetap hormati filter produk dari sidebar (prod_multi)
+    if prod_multi:
+        df_pareto_base = df_pareto_base[df_pareto_base["Nama Barang"].isin(prod_multi)]
+
+    if df_pareto_base.empty:
+        st.warning("Tidak ada data untuk analisis Pareto pada periode ini.")
+        st.stop()
+
+    # =========================
+    # PILIH METRIK
+    # =========================
     metric_pareto = st.radio(
         "Pilih metrik untuk Pareto:",
         ["QTY", "Nominal"],
-        index=0
+        index=0,
+        horizontal=True
     )
 
-    # Agregasi per produk (pakai df_filtered yang sudah terfilter tanggal & produk di atas)
+    # =========================
+    # AGREGASI PER PRODUK
+    # =========================
     df_pareto = (
-        df_filtered
+        df_pareto_base
         .groupby("Nama Barang")[["QTY", "Nominal"]]
         .sum()
         .reset_index()
     )
 
     if df_pareto.empty:
-        st.warning("Tidak ada data untuk analisis Pareto pada filter saat ini.")
+        st.warning("Tidak ada data untuk analisis Pareto setelah filter.")
     else:
-        # Urutkan berdasarkan metrik yang dipilih
         df_pareto = df_pareto.sort_values(metric_pareto, ascending=False)
 
-        # Hitung cumulative dan persentase
         total_val = df_pareto[metric_pareto].sum()
         df_pareto["Cum_Value"] = df_pareto[metric_pareto].cumsum()
         df_pareto["Cum_%"] = df_pareto["Cum_Value"] / total_val * 100
 
         st.subheader(f"Tabel Pareto Produk berdasarkan {metric_pareto}")
+        st.caption(f"Periode: {start_p} s/d {end_p}")
         st.dataframe(
             df_pareto[["Nama Barang", "QTY", "Nominal", "Cum_%"]]
-            .style.format({"QTY": "{:,.0f}", "Nominal": "{:,.0f}", "Cum_%": "{:,.2f}%"})
+            .style.format(
+                {"QTY": "{:,.0f}", "Nominal": "{:,.0f}", "Cum_%": "{:,.2f}%"}
+            )
         )
 
-        # Plot Pareto (bar + cumulative line)
+        # =========================
+        # PARETO CHART
+        # =========================
         st.subheader("Pareto Chart")
         fig, ax1 = plt.subplots(figsize=(12, 4))
 
@@ -470,22 +501,27 @@ elif analysis == "Pareto Produk":
         ax2.tick_params(axis="y", labelcolor="tab:red")
         ax2.set_ylim(0, 110)
 
-        # Garis referensi 80%
         ax2.axhline(80, color="gray", linestyle="--", linewidth=1)
 
         fig.tight_layout()
         st.pyplot(fig)
 
-        # Insight 80/20
+        # =========================
+        # INSIGHT 80/20
+        # =========================
+        st.subheader("Insight Pareto")
         top_mask = df_pareto["Cum_%"] <= 80
         top_products = df_pareto.loc[top_mask, "Nama Barang"].tolist()
-        top_share = df_pareto.loc[top_mask, "Cum_%"].max() if not df_pareto.loc[top_mask, "Cum_%"].empty else 0
+        top_share = (
+            df_pareto.loc[top_mask, "Cum_%"].max()
+            if not df_pareto.loc[top_mask, "Cum_%"].empty
+            else 0
+        )
 
-        st.subheader("Insight Pareto")
         if top_products:
             st.markdown(
                 f"- Sekitar **{len(top_products)} produk** pertama menyumbang "
-                f"±**{top_share:.1f}%** dari total {metric_pareto}.\n"
+                f"±**{top_share:.1f}%** dari total {metric_pareto} pada periode ini.\n"
                 f"- Produk kunci: `{', '.join(top_products[:10])}`"
                 + (" dan seterusnya..." if len(top_products) > 10 else "")
             )
@@ -493,6 +529,7 @@ elif analysis == "Pareto Produk":
             st.markdown(
                 "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
             )
+
 
 # -----------------------------
 # Forecasting
@@ -809,4 +846,5 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
