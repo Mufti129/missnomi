@@ -549,6 +549,7 @@ elif analysis == "Gross Profit & Margin":
     # =========================
     # CLEANING & TYPE FIX
     # =========================
+    df_gp["Nominal"] = pd.to_numeric(df_gp["Nominal"], errors="coerce").fillna(0)
     df_gp["QTY"] = pd.to_numeric(df_gp["QTY"], errors="coerce").fillna(0)
     df_gp["HPP"] = pd.to_numeric(df_gp["HPP"], errors="coerce").fillna(0)
     df_gp["HARGA JUAL"] = pd.to_numeric(df_gp["HARGA JUAL"], errors="coerce").fillna(0)
@@ -578,7 +579,7 @@ elif analysis == "Gross Profit & Margin":
     # =========================
     # METRIK DASAR
     # =========================
-    df_gp["Revenue"] = df_gp["QTY"] * df_gp["HARGA JUAL"]
+    df_gp["Revenue"] = df_gp["Nominal"] * df_gp["QTY"]
     df_gp["COGS"] = df_gp["QTY"] * df_gp["HPP"]
     df_gp["Gross Profit"] = df_gp["Revenue"] - df_gp["COGS"]
 
@@ -650,7 +651,7 @@ elif analysis == "Gross Profit & Margin":
     # AUTO INSIGHT SECTION
     # =========================
     st.divider()
-    st.subheader("Strategic Insight Otomatis")
+    st.subheader("Strategic Insight")
 
     insight_list = []
 
@@ -1421,6 +1422,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
