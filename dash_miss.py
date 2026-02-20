@@ -1,4 +1,6 @@
-# dashboard_final_refactor.py
+# dashboard_development_missnomi
+#Mukhammad Rekza Mufti
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -213,7 +215,6 @@ elif analysis == "Sales by Channel":
     # ===============================
     # STEP 0 — PILIH KOLOM TANGGAL
     # ===============================
-
     date_col = st.selectbox(
         "Pilih kolom Tanggal",
         df.columns,
@@ -996,7 +997,7 @@ elif analysis == "Klasifikasi Produk":
     # 9. INSIGHT OTOMATIS
     # ==========================================
 
-    st.subheader("Insight Otomatis")
+    st.subheader("Strategic Insight")
 
     total_prod = len(df_prod)
     n_best = (df_prod["CAT_auto"] == "Best Seller").sum()
@@ -1422,6 +1423,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
