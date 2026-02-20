@@ -536,7 +536,7 @@ elif analysis == "Pareto Produk":
 
 elif analysis == "Profit & Margin":
 
-    st.header("💰 Profit & Margin Produk")
+    st.header("Profit & Margin Produk")
 
     if ("HPP" not in df_filtered.columns) or ("HARGA JUAL" not in df_filtered.columns):
         st.error("Kolom 'HPP' dan/atau 'HARGA JUAL' tidak ditemukan di data. Tidak bisa hitung profit.")
@@ -559,7 +559,7 @@ elif analysis == "Profit & Margin":
     df_pm = df_pm.dropna(subset=["QTY", "HPP"])
 
     # Hitung COGS dan Profit
-    df_pm["Revenue"] = df_pm["Nominal"]      # asumsi sudah QTY * HARGA JUAL
+    df_pm["Revenue"] = df_pm["Nominal"]     # asumsi sudah QTY * HARGA JUAL
     df_pm["COGS"] = df_pm["HPP"] * df_pm["QTY"]
     df_pm["Profit"] = df_pm["Revenue"] - df_pm["COGS"]
     df_pm["Margin_%"] = df_pm["Profit"] / df_pm["Revenue"] * 100
@@ -568,8 +568,7 @@ elif analysis == "Profit & Margin":
     # Agregasi per produk (SKU + Nama Barang)
     group_cols = []
     if "SKU" in df_pm.columns:
-        group_cols.append("SKU")
-    group_cols.append("Nama Barang")
+        group_cols.append("Nama Barang")
 
     df_prod = (
         df_pm
@@ -653,7 +652,7 @@ elif analysis == "Profit & Margin":
 ## Menu klasifikasi ##
 elif analysis == "Klasifikasi Produk":
 
-    st.header("🏷️ Klasifikasi Produk Otomatis (Master + Transaksi)")
+    st.header("Klasifikasi Produk Otomatis (Master + Transaksi)")
 
     # ==========================================
     # 1. FILTER TANGGAL & LEVEL KLASIFIKASI
@@ -1350,6 +1349,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
