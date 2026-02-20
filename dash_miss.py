@@ -568,7 +568,8 @@ elif analysis == "Profit & Margin":
     # Agregasi per produk (SKU + Nama Barang)
     group_cols = []
     if "SKU" in df_pm.columns:
-        group_cols.append("Nama Barang")
+        group_cols.append("SKU")
+    group_cols.append("Nama Barang")
 
     df_prod = (
         df_pm
@@ -1349,6 +1350,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
