@@ -534,110 +534,125 @@ elif analysis == "Pareto Produk":
             st.markdown(
                 "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
             )
+
 elif analysis == "Gross Profit & Margin":
 
-    st.subheader("Gross Profit & Gross Margin Analysis")
+    st.subheader("💰 Gross Profit & Margin Analysis")
+
+    df_gp = df.copy()
 
     # =========================
-    # FILTER TANGGAL
+    # SAFETY CHECK KOLOM WAJIB
     # =========================
-    min_date = df["Tgl. Pesanan"].min()
-    max_date = df["Tgl. Pesanan"].max()
+    required_cols = ["Tgl. Pesanan", "QTY", "HPP", "HARGA JUAL"]
+    for col in required_cols:
+        if col not in df_gp.columns:
+            st.error(f"Kolom '{col}' tidak ditemukan di dataset.")
+            st.stop()
 
-    col_date1, col_date2 = st.columns(2)
+    # =========================
+    # CLEANING & TYPE FIX
+    # =========================
+    df_gp["QTY"] = pd.to_numeric(df_gp["QTY"], errors="coerce").fillna(0)
+    df_gp["HPP"] = pd.to_numeric(df_gp["HPP"], errors="coerce").fillna(0)
+    df_gp["HARGA JUAL"] = pd.to_numeric(df_gp["HARGA JUAL"], errors="coerce").fillna(0)
+    df_gp["Tgl. Pesanan"] = pd.to_datetime(df_gp["Tgl. Pesanan"], errors="coerce")
 
-    start_date = col_date1.date_input(
-        "Start Date",
-        value=min_date,
+    df_gp = df_gp.dropna(subset=["Tgl. Pesanan"])
+
+    # =========================
+    # DATE FILTER
+    # =========================
+    min_date = df_gp["Tgl. Pesanan"].min().date()
+    max_date = df_gp["Tgl. Pesanan"].max().date()
+
+    start_date, end_date = st.date_input(
+        "Filter Tanggal",
+        [min_date, max_date],
         min_value=min_date,
         max_value=max_date
     )
 
-    end_date = col_date2.date_input(
-        "End Date",
-        value=max_date,
-        min_value=min_date,
-        max_value=max_date
-    )
+    df_gp = df_gp[
+        (df_gp["Tgl. Pesanan"].dt.date >= start_date) &
+        (df_gp["Tgl. Pesanan"].dt.date <= end_date)
+    ]
 
-    df_pm = df[
-        (df["Tgl. Pesanan"] >= pd.to_datetime(start_date)) &
-        (df["Tgl. Pesanan"] <= pd.to_datetime(end_date))
-    ].copy()
+    if df_gp.empty:
+        st.warning("Tidak ada data pada rentang tanggal tersebut.")
+        st.stop()
 
     # =========================
-    # FILTER VALID SALES
+    # METRIK DASAR
     # =========================
-    if "Status" in df_pm.columns:
-        df_pm = df_pm[df_pm["Status"] == "SHIPPING"]
+    df_gp["Revenue"] = df_gp["QTY"] * df_gp["HARGA JUAL"]
+    df_gp["COGS"] = df_gp["QTY"] * df_gp["HPP"]
+    df_gp["Gross Profit"] = df_gp["Revenue"] - df_gp["COGS"]
 
-    if "Keterangan" in df_pm.columns:
-        df_pm = df_pm[~df_pm["Keterangan"].isin(["Endorse", "Affiliatte", "Retur", "RETURAN", "GIVE AWAY", "GIVEAWAY", "peminjaman", "peminjaman baju"])]
+    total_revenue = df_gp["Revenue"].sum()
+    total_cogs = df_gp["COGS"].sum()
+    total_gp = df_gp["Gross Profit"].sum()
 
-    if "Retur Sales" in df_pm.columns:
-        df_pm = df_pm[df_pm["Retur Sales"].isna()]
+    gross_margin = (total_gp / total_revenue * 100) if total_revenue != 0 else 0
 
     # =========================
-    # HITUNG GROSS PROFIT
+    # KPI DISPLAY
     # =========================
-    # =========================
-    # HITUNG GROSS PROFIT
-    # =========================
-    
-    # Convert numeric dulu
-    df_pm["HPP"] = pd.to_numeric(df_pm["HPP"], errors="coerce")
-    df_pm["QTY"] = pd.to_numeric(df_pm["QTY"], errors="coerce")
-    df_pm["Nominal"] = pd.to_numeric(df_pm["Nominal"], errors="coerce")
-    
-    # Buang baris yang tidak valid
-    df_pm = df_pm.dropna(subset=["HPP", "QTY", "Nominal"])
-    
-    # Baru hitung
-    df_pm["Revenue"] = df_pm["Nominal"]
-    df_pm["COGS"] = df_pm["HPP"] * df_pm["QTY"]
-    df_pm["Gross Profit"] = df_pm["Revenue"] - df_pm["COGS"]
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Total Revenue", f"Rp {total_revenue:,.0f}")
+    col2.metric("Total COGS", f"Rp {total_cogs:,.0f}")
+    col3.metric("Gross Profit", f"Rp {total_gp:,.0f}")
+    col4.metric("Gross Margin %", f"{gross_margin:.2f}%")
+
+    st.divider()
 
     # =========================
     # DAILY SUMMARY
     # =========================
-    daily_pm = (
-        df_pm.groupby("Tgl. Pesanan")
+    st.subheader("📅 Daily Gross Profit")
+
+    daily = (
+        df_gp.groupby(df_gp["Tgl. Pesanan"].dt.date)
         .agg({
-            "QTY": "sum",
             "Revenue": "sum",
             "COGS": "sum",
             "Gross Profit": "sum"
         })
         .reset_index()
-        .rename(columns={
-            "Tgl. Pesanan": "Tanggal",
-            "QTY": "Qty Sold"
+    )
+
+    daily["Gross Margin %"] = (
+        daily["Gross Profit"] / daily["Revenue"] * 100
+    ).replace([float("inf"), -float("inf")], 0).fillna(0)
+
+    st.dataframe(daily, use_container_width=True)
+
+    # =========================
+    # MONTHLY SUMMARY
+    # =========================
+    st.subheader("📆 Monthly Gross Profit")
+
+    df_gp["Month"] = df_gp["Tgl. Pesanan"].dt.to_period("M")
+
+    monthly = (
+        df_gp.groupby("Month")
+        .agg({
+            "Revenue": "sum",
+            "COGS": "sum",
+            "Gross Profit": "sum"
         })
+        .reset_index()
     )
 
-    daily_pm["Gross Margin_%"] = (
-        daily_pm["Gross Profit"] / daily_pm["Revenue"] * 100
-    ).replace([np.inf, -np.inf], np.nan)
+    monthly["Gross Margin %"] = (
+        monthly["Gross Profit"] / monthly["Revenue"] * 100
+    ).replace([float("inf"), -float("inf")], 0).fillna(0)
 
-    # =========================
-    # KPI SUMMARY
-    # =========================
-    total_revenue = daily_pm["Revenue"].sum()
-    total_cogs = daily_pm["COGS"].sum()
-    total_gross_profit = daily_pm["Gross Profit"].sum()
-    total_gross_margin = (
-        total_gross_profit / total_revenue * 100
-        if total_revenue != 0 else 0
-    )
+    monthly["Month"] = monthly["Month"].astype(str)
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Revenue", f"{total_revenue:,.0f}")
-    col2.metric("Total COGS", f"{total_cogs:,.0f}")
-    col3.metric("Gross Profit", f"{total_gross_profit:,.0f}")
-    col4.metric("Gross Margin %", f"{total_gross_margin:.2f}%")
-
-    st.dataframe(daily_pm.sort_values("Tanggal", ascending=False))
-
+    st.dataframe(monthly, use_container_width=True)
+    
     # =========================
     # RULE OF THUMB
     # =========================
@@ -1353,6 +1368,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
