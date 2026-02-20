@@ -559,7 +559,7 @@ elif analysis == "Profit & Margin":
     df_pm = df_pm.dropna(subset=["QTY", "HPP"])
 
     # Hitung COGS dan Profit
-    df_pm["Revenue"] = df_pm["Nominal"]     # asumsi sudah QTY * HARGA JUAL
+    df_pm["Revenue"] = df_pm["Nominal"] * df_pm["QTY"]    # asumsi sudah QTY * HARGA JUAL
     df_pm["COGS"] = df_pm["HPP"] * df_pm["QTY"]
     df_pm["Profit"] = df_pm["Revenue"] - df_pm["COGS"]
     df_pm["Margin_%"] = df_pm["Profit"] / df_pm["Revenue"] * 100
@@ -1350,6 +1350,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
