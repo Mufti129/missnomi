@@ -5,3 +5,4 @@ matplotlib==3.7.3
 seaborn
 scikit-learn
 statsmodels
+plotly==5.18.0
