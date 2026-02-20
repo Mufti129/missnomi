@@ -224,7 +224,7 @@ elif analysis == "Sales by Channel":
         index=df.columns.get_loc("Tgl. Pesanan") if "Tgl. Pesanan" in df.columns else 0
     )
 
-    # Pastikan datetime
+    # Ubah ke datetime
     df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
 
     min_date = df[date_col].min()
@@ -1428,6 +1428,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
