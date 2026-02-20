@@ -579,7 +579,7 @@ elif analysis == "Gross Profit & Margin":
     # =========================
     # METRIK DASAR
     # =========================
-    df_gp["Revenue"] = df_gp["Nominal"] * df_gp["QTY"]
+    df_gp["Revenue"] = df_gp["Nominal"]
     df_gp["COGS"] = df_gp["QTY"] * df_gp["HPP"]
     df_gp["Gross Profit"] = df_gp["Revenue"] - df_gp["COGS"]
 
@@ -1422,6 +1422,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
