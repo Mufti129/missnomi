@@ -539,219 +539,215 @@ elif analysis == "Gross Profit & Margin":
 
     st.subheader("Gross Profit & Gross Margin Analysis")
 
-    # =========================
-    # FILTER TANGGAL
-    # =========================
-    min_date = df["Tgl. Pesanan"].min()
-    max_date = df["Tgl. Pesanan"].max()
-
-    col_date1, col_date2 = st.columns(2)
-
-    start_date = col_date1.date_input(
-        "Start Date", value=min_date,
-        min_value=min_date, max_value=max_date
-    )
-
-    end_date = col_date2.date_input(
-        "End Date", value=max_date,
-        min_value=min_date, max_value=max_date
-    )
-
-    df_pm = df[
-        (df["Tgl. Pesanan"] >= pd.to_datetime(start_date)) &
-        (df["Tgl. Pesanan"] <= pd.to_datetime(end_date))
-    ].copy()
-
-    # =========================
-    # FILTER VALID SALES
-    # =========================
-    if "Status" in df_pm.columns:
-        df_pm = df_pm[df_pm["Status"] == "Shipping"]
-
-    if "Keterangan" in df_pm.columns:
-        df_pm = df_pm[~df_pm["Keterangan"].isin(["Endorse", "Affiliate", "Retur"])]
-
-    if "Retur Sales" in df_pm.columns:
-        df_pm = df_pm[df_pm["Retur Sales"].isna()]
-
-    # =========================
-    # HITUNG GROSS PROFIT
-    # =========================
-    df_pm["Revenue"] = df_pm["Nominal"]
-    df_pm["COGS"] = df_pm["HPP"] * df_pm["QTY"]
-    df_pm["Gross Profit"] = df_pm["Revenue"] - df_pm["COGS"]
-
-    # =========================
-    # DAILY SUMMARY
-    # =========================
-    daily_pm = (
-        df_pm.groupby("Tgl. Pesanan")
-        .agg({
-            "QTY": "sum",
-            "Revenue": "sum",
-            "COGS": "sum",
-            "Gross Profit": "sum"
-        })
-        .reset_index()
-        .rename(columns={
-            "Tgl. Pesanan": "Tanggal",
-            "QTY": "Qty Sold"
-        })
-    )
-
-    daily_pm["Gross Margin_%"] = (
-        daily_pm["Gross Profit"] / daily_pm["Revenue"] * 100
-    ).replace([np.inf, -np.inf], np.nan)
-
-    total_revenue = daily_pm["Revenue"].sum()
-    total_cogs = daily_pm["COGS"].sum()
-    total_gross_profit = daily_pm["Gross Profit"].sum()
-    total_gross_margin = (
-        total_gross_profit / total_revenue * 100
-    ) if total_revenue != 0 else 0
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Revenue", f"{total_revenue:,.0f}")
-    col2.metric("Total COGS", f"{total_cogs:,.0f}")
-    col3.metric("Gross Profit", f"{total_gross_profit:,.0f}")
-    col4.metric("Gross Margin %", f"{total_gross_margin:.2f}%")
-
-    st.markdown("---")
-
-    fig_daily = px.line(
-        daily_pm, x="Tanggal", y="Gross Profit",
-        title="Daily Gross Profit Trend", markers=True
-    )
-    st.plotly_chart(fig_daily, use_container_width=True)
-    st.dataframe(daily_pm.sort_values("Tanggal", ascending=False), use_container_width=True)
-
-    # =========================
-    # MONTHLY SUMMARY
-    # =========================
-    df_pm["Month"] = df_pm["Tgl. Pesanan"].dt.to_period("M").astype(str)
-
-    monthly_pm = (
-        df_pm.groupby("Month")
-        .agg({
-            "QTY": "sum",
-            "Revenue": "sum",
-            "COGS": "sum",
-            "Gross Profit": "sum"
-        })
-        .reset_index()
-        .rename(columns={"QTY": "Qty Sold"})
-    )
-
-    monthly_pm["Gross Margin_%"] = (
-        monthly_pm["Gross Profit"] / monthly_pm["Revenue"] * 100
-    ).replace([np.inf, -np.inf], np.nan)
-
-    st.markdown("## 📅 Monthly Summary")
-
-    fig_month = px.bar(
-        monthly_pm, x="Month", y="Gross Profit",
-        title="Monthly Gross Profit"
-    )
-    st.plotly_chart(fig_month, use_container_width=True)
-    st.dataframe(monthly_pm.sort_values("Month", ascending=False), use_container_width=True)
-
-    # =========================
-    # PROFIT PER CHANNEL
-    # =========================
-    st.markdown("---")
-    st.markdown("## 📦 Gross Profit per Channel")
-
-    if "Channel" in df_pm.columns:
-
-        channel_pm = (
-            df_pm.groupby("Channel")
-            .agg({
-                "QTY": "sum",
-                "Revenue": "sum",
-                "COGS": "sum",
-                "Gross Profit": "sum"
-            })
-            .reset_index()
-            .rename(columns={"QTY": "Qty Sold"})
-        )
-
-        channel_pm["Gross Margin_%"] = (
-            channel_pm["Gross Profit"] / channel_pm["Revenue"] * 100
-        )
-
-        channel_pm["Contribution_%"] = (
-            channel_pm["Gross Profit"] /
-            channel_pm["Gross Profit"].sum() * 100
-        )
-
-        channel_pm = channel_pm.sort_values("Gross Profit", ascending=False)
-
-        fig_channel = px.bar(
-            channel_pm, x="Channel", y="Gross Profit",
-            title="Gross Profit by Channel"
-        )
-        st.plotly_chart(fig_channel, use_container_width=True)
-        st.dataframe(channel_pm, use_container_width=True)
-
-    # =========================
-    # PRODUCT CONTRIBUTION
-    # =========================
-    st.markdown("---")
-    st.markdown("## 🏆 Product Contribution (Pareto)")
-
-    if "Nama Barang" in df_pm.columns:
-
-        product_pm = (
-            df_pm.groupby("Nama Barang")
-            .agg({
-                "QTY": "sum",
-                "Revenue": "sum",
-                "COGS": "sum",
-                "Gross Profit": "sum"
-            })
-            .reset_index()
-            .rename(columns={"QTY": "Qty Sold"})
-        )
-
-        product_pm = product_pm.sort_values("Gross Profit", ascending=False)
-
-        product_pm["Contribution_%"] = (
-            product_pm["Gross Profit"] /
-            product_pm["Gross Profit"].sum() * 100
-        )
-
-        product_pm["Cumulative_%"] = product_pm["Contribution_%"].cumsum()
-
-        fig_pareto = px.bar(
-            product_pm.head(20),
-            x="Nama Barang",
-            y="Gross Profit",
-            title="Top 20 Products by Gross Profit"
-        )
-        st.plotly_chart(fig_pareto, use_container_width=True)
-        st.dataframe(product_pm, use_container_width=True)
-
-    # =========================
-    # RULE OF THUMB
-    # =========================
-    st.markdown("---")
-    st.markdown("## 📘 Cara Membaca Dashboard")
-
-    st.markdown("""
-Gross Profit = Revenue - COGS  
-Gross Margin = Gross Profit / Revenue  
-
-⚠️ Ini bukan Net Profit (belum dikurangi ads, fee marketplace, operasional).
-
-### Rule of Thumb:
-- Gross Margin <20% → Rentan
-- 20–35% → Normal retail
-- >40% → Sehat & bisa scaling
-
-- Jika 1 channel >50% kontribusi → Risiko konsentrasi
-- Jika <20% SKU menyumbang 80% profit → Fokus scale top SKU
-""")
+        # =========================
+        # FILTER TANGGAL
+        # =========================
+        min_date = df["Tgl. Pesanan"].min()
+        max_date = df["Tgl. Pesanan"].max()
     
+        col_date1, col_date2 = st.columns(2)
+    
+        start_date = col_date1.date_input(
+            "Start Date", value=min_date,
+            min_value=min_date, max_value=max_date
+        )
+    
+        end_date = col_date2.date_input(
+            "End Date", value=max_date,
+            min_value=min_date, max_value=max_date
+        )
+    
+        df_pm = df[
+            (df["Tgl. Pesanan"] >= pd.to_datetime(start_date)) &
+            (df["Tgl. Pesanan"] <= pd.to_datetime(end_date))
+        ].copy()
+    
+        # =========================
+        # FILTER VALID SALES
+        # =========================
+        if "Status" in df_pm.columns:
+            df_pm = df_pm[df_pm["Status"] == "Shipping"]
+    
+        if "Keterangan" in df_pm.columns:
+            df_pm = df_pm[~df_pm["Keterangan"].isin(["Endorse", "Affiliate", "Retur"])]
+    
+        if "Retur Sales" in df_pm.columns:
+            df_pm = df_pm[df_pm["Retur Sales"].isna()]
+    
+        # =========================
+        # HITUNG GROSS PROFIT
+        # =========================
+        df_pm["Revenue"] = df_pm["Nominal"]
+        df_pm["COGS"] = df_pm["HPP"] * df_pm["QTY"]
+        df_pm["Gross Profit"] = df_pm["Revenue"] - df_pm["COGS"]
+    
+        # =========================
+        # DAILY SUMMARY
+        # =========================
+        daily_pm = (
+            df_pm.groupby("Tgl. Pesanan")
+            .agg({
+                "QTY": "sum",
+                "Revenue": "sum",
+                "COGS": "sum",
+                "Gross Profit": "sum"
+            })
+            .reset_index()
+            .rename(columns={
+                "Tgl. Pesanan": "Tanggal",
+                "QTY": "Qty Sold"
+            })
+        )
+    
+        daily_pm["Gross Margin_%"] = (
+            daily_pm["Gross Profit"] / daily_pm["Revenue"] * 100
+        ).replace([np.inf, -np.inf], np.nan)
+    
+        total_revenue = daily_pm["Revenue"].sum()
+        total_cogs = daily_pm["COGS"].sum()
+        total_gross_profit = daily_pm["Gross Profit"].sum()
+        total_gross_margin = (
+            total_gross_profit / total_revenue * 100
+        ) if total_revenue != 0 else 0
+    
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Revenue", f"{total_revenue:,.0f}")
+        col2.metric("Total COGS", f"{total_cogs:,.0f}")
+        col3.metric("Gross Profit", f"{total_gross_profit:,.0f}")
+        col4.metric("Gross Margin %", f"{total_gross_margin:.2f}%")
+    
+        st.markdown("---")
+    
+        fig_daily = px.line(
+            daily_pm, x="Tanggal", y="Gross Profit",
+            title="Daily Gross Profit Trend", markers=True
+        )
+        st.plotly_chart(fig_daily, use_container_width=True)
+        st.dataframe(daily_pm.sort_values("Tanggal", ascending=False), use_container_width=True)
+    
+        # =========================
+        # MONTHLY SUMMARY
+        # =========================
+        df_pm["Month"] = df_pm["Tgl. Pesanan"].dt.to_period("M").astype(str)
+    
+        monthly_pm = (
+            df_pm.groupby("Month")
+            .agg({
+                "QTY": "sum",
+                "Revenue": "sum",
+                "COGS": "sum",
+                "Gross Profit": "sum"
+            })
+            .reset_index()
+            .rename(columns={"QTY": "Qty Sold"})
+        )
+    
+        monthly_pm["Gross Margin_%"] = (
+            monthly_pm["Gross Profit"] / monthly_pm["Revenue"] * 100
+        ).replace([np.inf, -np.inf], np.nan)
+    
+        st.markdown("## 📅 Monthly Summary")
+    
+        fig_month = px.bar(
+            monthly_pm, x="Month", y="Gross Profit",
+            title="Monthly Gross Profit"
+        )
+        st.plotly_chart(fig_month, use_container_width=True)
+        st.dataframe(monthly_pm.sort_values("Month", ascending=False), use_container_width=True)
+    
+        # =========================
+        # PROFIT PER CHANNEL
+        # =========================
+        st.markdown("---")
+        st.markdown("## 📦 Gross Profit per Channel")
+    
+        if "Channel" in df_pm.columns:
+    
+            channel_pm = (
+                df_pm.groupby("Channel")
+                .agg({
+                    "QTY": "sum",
+                    "Revenue": "sum",
+                    "COGS": "sum",
+                    "Gross Profit": "sum"
+                })
+                .reset_index()
+                .rename(columns={"QTY": "Qty Sold"})
+            )
+    
+            channel_pm["Gross Margin_%"] = (
+                channel_pm["Gross Profit"] / channel_pm["Revenue"] * 100
+            )
+    
+            channel_pm["Contribution_%"] = (
+                channel_pm["Gross Profit"] /
+                channel_pm["Gross Profit"].sum() * 100
+            )
+    
+            channel_pm = channel_pm.sort_values("Gross Profit", ascending=False)
+    
+            fig_channel = px.bar(
+                channel_pm, x="Channel", y="Gross Profit",
+                title="Gross Profit by Channel"
+            )
+            st.plotly_chart(fig_channel, use_container_width=True)
+            st.dataframe(channel_pm, use_container_width=True)
+    
+        # =========================
+        # PRODUCT CONTRIBUTION
+        # =========================
+        st.markdown("---")
+        st.markdown("## 🏆 Product Contribution (Pareto)")
+    
+        if "Nama Barang" in df_pm.columns:
+    
+            product_pm = (
+                df_pm.groupby("Nama Barang")
+                .agg({
+                    "QTY": "sum",
+                    "Revenue": "sum",
+                    "COGS": "sum",
+                    "Gross Profit": "sum"
+                })
+                .reset_index()
+                .rename(columns={"QTY": "Qty Sold"})
+            )
+    
+            product_pm = product_pm.sort_values("Gross Profit", ascending=False)
+    
+            product_pm["Contribution_%"] = (
+                product_pm["Gross Profit"] /
+                product_pm["Gross Profit"].sum() * 100
+            )
+    
+            product_pm["Cumulative_%"] = product_pm["Contribution_%"].cumsum()
+    
+            fig_pareto = px.bar(
+                product_pm.head(20),
+                x="Nama Barang",
+                y="Gross Profit",
+                title="Top 20 Products by Gross Profit"
+            )
+            st.plotly_chart(fig_pareto, use_container_width=True)
+            st.dataframe(product_pm, use_container_width=True)
+    
+        # =========================
+        # RULE OF THUMB
+        # =========================
+        with st.expander("Metodologi & Rule of Thumb", expanded=False):
+        st.markdown("""
+            - Gross Profit = Revenue - COGS  
+            - Gross Margin = Gross Profit / Revenue  
+            ⚠️ Ini bukan Net Profit (belum dikurangi ads, fee marketplace, operasional).
+            ### Rule of Thumb:
+            - Gross Margin <20% → Rentan
+            - 20–35% → Normal retail
+            - >40% → Sehat & bisa scaling
+            
+            - Jika 1 channel >50% kontribusi → Risiko konsentrasi
+            - Jika <20% SKU menyumbang 80% profit → Fokus scale top SKU"""
+        )
+
 ## Menu klasifikasi ##
 elif analysis == "Klasifikasi Produk":
 
@@ -1452,6 +1448,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
