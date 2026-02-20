@@ -158,7 +158,7 @@ lstm_toggle = st.sidebar.checkbox("Enable LSTM (only if TensorFlow is installed)
 
 # Analysis selector
 st.sidebar.markdown("### Analisis")
-analysis = st.sidebar.radio("Pilih Analisis:", ["Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk","Profit & Margin","Klasifikasi Produk"])
+analysis = st.sidebar.radio("Pilih Analisis:", ["Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk","Gross Profit & Margin","Klasifikasi Produk"])
 
 # -----------------------------
 # Apply filters
@@ -537,7 +537,7 @@ elif analysis == "Pareto Produk":
 
 elif analysis == "Gross Profit & Margin":
 
-    st.subheader("📊 Gross Profit & Gross Margin Analysis")
+    st.subheader("Gross Profit & Gross Margin Analysis")
 
     # =========================
     # FILTER TANGGAL
@@ -1452,6 +1452,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
