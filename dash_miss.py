@@ -987,7 +987,6 @@ elif analysis == "Klasifikasi Produk":
 
     with st.expander("Metodologi & Rule of Thumb", expanded=False):
         st.markdown(
-            """
             **Metodologi:**
             - Data transaksi digabung dengan *master produk* berdasarkan `SKU`, sehingga atribut seperti
               Category, Warna, Size, HPP, Sell Price, dan Tanggal Launching diambil dari master produk. [web:51][web:72]
@@ -1040,6 +1039,7 @@ elif analysis == "Klasifikasi Produk":
 # -----------------------------
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
