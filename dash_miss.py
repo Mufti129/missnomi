@@ -172,7 +172,7 @@ if prod_multi:
 st.subheader("Preview Data Setelah Filter")
 #st.dataframe(df_filtered.head(300))
 with st.expander("Dataset", expanded=False):
-        st.dataframe(df_filtered.head(300)) 
+        st.dataframe(df_filtered.head(300)) #--->>> setiap menu ada
         
 
 # -----------------------------
@@ -302,7 +302,7 @@ elif analysis == "Sales by Channel":
     )
 
     # ===============================
-    # STEP 6 — INSIGHT OTOMATIS
+    # STEP 6 — INSIGHT
     # ===============================
 
     top_channel = df_channel.iloc[0][channel_col]
@@ -311,7 +311,6 @@ elif analysis == "Sales by Channel":
     low_channels = df_channel[df_channel["Share (%)"] < 10][channel_col].tolist()
 
     st.subheader("Insight :")
-
     st.markdown(f"""
     **Channel Dominan:** `{top_channel}`  
     Kontribusi **{top_share}%** pada periode terpilih.
@@ -542,6 +541,7 @@ elif analysis == "Pareto Produk":
 elif analysis == "Gross Profit & Margin":
     st.subheader("Gross Profit & Margin Analysis")
     df_gp = df.copy()
+    
     # =========================
     # SAFETY CHECK KOLOM WAJIB
     # =========================
@@ -550,6 +550,7 @@ elif analysis == "Gross Profit & Margin":
         if col not in df_gp.columns:
             st.error(f"Kolom '{col}' tidak ditemukan di dataset.")
             st.stop()
+            
     # =========================
     # CLEANING & TYPE FIX
     # =========================
@@ -559,6 +560,7 @@ elif analysis == "Gross Profit & Margin":
     df_gp["HARGA JUAL"] = pd.to_numeric(df_gp["HARGA JUAL"], errors="coerce").fillna(0)
     df_gp["Tgl. Pesanan"] = pd.to_datetime(df_gp["Tgl. Pesanan"], errors="coerce")
     df_gp = df_gp.dropna(subset=["Tgl. Pesanan"])
+    
     # =========================
     # DATE FILTER
     # =========================
@@ -1426,6 +1428,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
