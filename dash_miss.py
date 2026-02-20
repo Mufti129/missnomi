@@ -536,11 +536,8 @@ elif analysis == "Pareto Produk":
             )
 
 elif analysis == "Gross Profit & Margin":
-
-    st.subheader("💰 Gross Profit & Margin Analysis")
-
+    st.subheader("Gross Profit & Margin Analysis")
     df_gp = df.copy()
-
     # =========================
     # SAFETY CHECK KOLOM WAJIB
     # =========================
@@ -549,7 +546,6 @@ elif analysis == "Gross Profit & Margin":
         if col not in df_gp.columns:
             st.error(f"Kolom '{col}' tidak ditemukan di dataset.")
             st.stop()
-
     # =========================
     # CLEANING & TYPE FIX
     # =========================
@@ -557,15 +553,12 @@ elif analysis == "Gross Profit & Margin":
     df_gp["HPP"] = pd.to_numeric(df_gp["HPP"], errors="coerce").fillna(0)
     df_gp["HARGA JUAL"] = pd.to_numeric(df_gp["HARGA JUAL"], errors="coerce").fillna(0)
     df_gp["Tgl. Pesanan"] = pd.to_datetime(df_gp["Tgl. Pesanan"], errors="coerce")
-
     df_gp = df_gp.dropna(subset=["Tgl. Pesanan"])
-
     # =========================
     # DATE FILTER
     # =========================
     min_date = df_gp["Tgl. Pesanan"].min().date()
     max_date = df_gp["Tgl. Pesanan"].max().date()
-
     start_date, end_date = st.date_input(
         "Filter Tanggal",
         [min_date, max_date],
@@ -610,7 +603,7 @@ elif analysis == "Gross Profit & Margin":
     # =========================
     # DAILY SUMMARY
     # =========================
-    st.subheader("📅 Daily Gross Profit")
+    st.subheader("Daily Gross Profit")
 
     daily = (
         df_gp.groupby(df_gp["Tgl. Pesanan"].dt.date)
@@ -631,7 +624,7 @@ elif analysis == "Gross Profit & Margin":
     # =========================
     # MONTHLY SUMMARY
     # =========================
-    st.subheader("📆 Monthly Gross Profit")
+    st.subheader("Monthly Gross Profit")
 
     df_gp["Month"] = df_gp["Tgl. Pesanan"].dt.to_period("M")
 
@@ -652,20 +645,80 @@ elif analysis == "Gross Profit & Margin":
     monthly["Month"] = monthly["Month"].astype(str)
 
     st.dataframe(monthly, use_container_width=True)
+
+    # =========================
+    # AUTO INSIGHT SECTION
+    # =========================
+    st.divider()
+    st.subheader("Strategic Insight Otomatis")
+
+    insight_list = []
+
+    # --- 1. Margin Check ---
+    if gross_margin < 20:
+        insight_list.append(
+            "⚠️ Gross Margin di bawah 20%. Risiko pricing terlalu rendah atau HPP terlalu tinggi."
+        )
+    elif gross_margin < 30:
+        insight_list.append(
+            "Gross Margin moderat (20–30%). Masih ada ruang optimasi harga atau efisiensi biaya."
+        )
+    else:
+        insight_list.append(
+            "✅ Gross Margin sehat (>30%). Struktur harga relatif aman."
+        )
+
+    # --- 2. Daily Volatility ---
+    if len(daily) > 3:
+        daily_std = daily["Gross Profit"].std()
+        daily_mean = daily["Gross Profit"].mean()
+
+        if daily_std > daily_mean:
+            insight_list.append(
+                "📉 Profit harian sangat fluktuatif. Distribusi penjualan tidak stabil."
+            )
+
+    # --- 3. Weakest Day ---
+    if not daily.empty:
+        weakest_day = daily.loc[daily["Gross Profit"].idxmin()]
+        insight_list.append(
+            f"🔻 Hari terlemah: {weakest_day['Tgl. Pesanan']} dengan GP Rp {weakest_day['Gross Profit']:,.0f}."
+        )
+
+    # --- 4. Monthly Concentration Risk ---
+    if len(monthly) > 1:
+        top_month_share = monthly["Gross Profit"].max() / monthly["Gross Profit"].sum()
+
+        if top_month_share > 0.5:
+            insight_list.append(
+                "⚠️ Lebih dari 50% profit berasal dari 1 bulan. Risiko ketergantungan periode tinggi."
+            )
+
+    # --- 5. Negative Profit Check ---
+    if total_gp < 0:
+        insight_list.append(
+            "🚨 Total Gross Profit negatif. Model bisnis atau diskon perlu dievaluasi segera."
+        )
+
+    # =========================
+    # DISPLAY INSIGHT
+    # =========================
+    for ins in insight_list:
+        st.write(ins)
     
     # =========================
     # RULE OF THUMB
     # =========================
     with st.expander("Metodologi & Rule of Thumb", expanded=False):
         st.markdown("""
-- Gross Profit = Revenue - COGS  
-- Gross Margin = Gross Profit / Revenue  
-⚠️ Ini bukan Net Profit (belum dikurangi ads & operasional)
+        - Gross Profit = Revenue - COGS  
+        - Gross Margin = Gross Profit / Revenue  
+        ⚠️ Ini bukan Net Profit (belum dikurangi ads & operasional)
 
-### Rule of Thumb:
-- <20% → Rentan  
-- 20–35% → Normal retail  
-- >40% → Sehat & scalable  
+        ### Rule of Thumb :
+        - <20% → Rentan  
+        - 20–35% → Normal retail  
+        - >40% → Sehat & scalable  
         """)
 
 ## Menu klasifikasi ##
@@ -1008,7 +1061,7 @@ elif analysis == "Klasifikasi Produk":
             """
             **Metodologi:**
             - Data transaksi digabung dengan *master produk* berdasarkan `SKU`, sehingga atribut seperti
-              Category, Warna, Size, HPP, Sell Price, dan Tanggal Launching diambil dari master produk. [web:51][web:72]
+              Category, Warna, Size, HPP, Sell Price, dan Tanggal Launching diambil dari master produk.
             - Metrik penjualan per produk selama periode analisis: `total_revenue`, `total_qty`, 
               `months_sold`, `first_sale_date`, `last_sale_date`.
             - Umur produk (`age_months`) dihitung dari `TANGGAL_LAUNCHING`; produk yang tidak laku dalam
@@ -1368,6 +1421,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
