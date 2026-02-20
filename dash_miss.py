@@ -759,11 +759,16 @@ elif analysis == "Klasifikasi Produk":
         if c in df_merged.columns:
             agg_dict[c] = (c, "first")
 
+    #df_prod = (
+      #  df_merged
+       # .groupby(group_cols)
+      #  .agg(**agg_dict)
+     #   .reset_index()
+    #)
     df_prod = (
-        df_merged
-        .groupby(group_cols)
-        .agg(**agg_dict)
-        .reset_index()
+    df_merged
+    .groupby(group_cols, as_index=False)
+    .agg(**agg_dict)
     )
 
     # name_col sudah pasti ada di df_prod (karena join & agg first)
@@ -1338,6 +1343,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
