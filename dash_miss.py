@@ -976,9 +976,9 @@ elif analysis == "Klasifikasi Produk":
             f"Produk **Best Seller** masih sedikit ({share_best:.1f}% dari total SKU). "
             "Portofolio terlalu tersebar, atau threshold Best Seller perlu di-adjust."
         )
-    if share_standard < 30:
+    if share_stan < 30:
     st.info(
-        f"Porsi produk **Standar** relatif kecil ({share_standard:.1f}%). "
+        f"Porsi produk **Standar** relatif kecil ({share_stan:.1f}%). "
         "Komposisi portofolio didominasi oleh ekstrem (Best Seller vs Slow/Dead)."
     
     # ==========================================
@@ -1350,6 +1350,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
