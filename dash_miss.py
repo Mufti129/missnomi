@@ -977,9 +977,9 @@ elif analysis == "Klasifikasi Produk":
             "Portofolio terlalu tersebar, atau threshold Best Seller perlu di-adjust."
         )
     if share_stan < 30:
-    st.info(
-        f"Porsi produk **Standar** relatif kecil ({share_stan:.1f}%). "
-        "Komposisi portofolio didominasi oleh ekstrem (Best Seller vs Slow/Dead)."
+        st.info(
+            f"Porsi produk **Standar** relatif kecil ({share_stan:.1f}%). "
+            "Komposisi portofolio didominasi oleh ekstrem (Best Seller vs Slow/Dead)."
     
     # ==========================================
     # 10. METODOLOGI & RULE OF THUMB
@@ -1041,6 +1041,7 @@ elif analysis == "Klasifikasi Produk":
 # -----------------------------
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
