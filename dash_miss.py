@@ -931,16 +931,18 @@ elif analysis == "Klasifikasi Produk":
     n_new = (df_prod["CAT_auto"] == "New Launching").sum()
     n_slow = (df_prod["CAT_auto"] == "Slow Moving").sum()
     n_dead = (df_prod["CAT_auto"] == "Dead").sum()
+    n_stan = (df_prod["CAT_auto"] == "Standar").sum()
 
     share_best = n_best / total_prod * 100 if total_prod > 0 else 0
     share_new = n_new / total_prod * 100 if total_prod > 0 else 0
     share_slow = n_slow / total_prod * 100 if total_prod > 0 else 0
     share_dead = n_dead / total_prod * 100 if total_prod > 0 else 0
+    share_stan = n_stan / total_prod * 100 if total_prod > 0 else 0
 
     rev_by_class = (
         df_prod.groupby("CAT_auto")["total_revenue"]
         .sum()
-        .reindex(["Best Seller", "New Launching", "Slow Moving", "Dead"])
+        .reindex(["Best Seller", "New Launching", "Slow Moving", "Dead","Standar"])
         .fillna(0)
     )
     total_rev = rev_by_class.sum()
@@ -954,7 +956,8 @@ elif analysis == "Klasifikasi Produk":
         f"**{n_best} Best Seller ({share_best:.1f}%)**, "
         f"**{n_new} New Launching ({share_new:.1f}%)**, "
         f"**{n_slow} Slow Moving ({share_slow:.1f}%)**, "
-        f"dan **{n_dead} Dead ({share_dead:.1f}%)**.\n"
+        f"dan **{n_dead} Dead ({share_dead:.1f}%)**
+        f"dan **{n_stan} Standar ({share_stan:.1f}%)**.\n"
         f"- Kelas **Best Seller** menyumbang sekitar **{best_rev_share:.1f}%** dari total revenue periode ini."
     )
 
@@ -971,14 +974,18 @@ elif analysis == "Klasifikasi Produk":
     if share_best < 10:
         st.info(
             f"Produk **Best Seller** masih sedikit ({share_best:.1f}% dari total SKU). "
-            "Bisa jadi portofolio terlalu tersebar, atau threshold Best Seller perlu di-adjust."
+            "Portofolio terlalu tersebar, atau threshold Best Seller perlu di-adjust."
         )
-
+    if share_standard < 30:
+    st.info(
+        f"Porsi produk **Standar** relatif kecil ({share_standard:.1f}%). "
+        "Komposisi portofolio didominasi oleh ekstrem (Best Seller vs Slow/Dead)."
+    
     # ==========================================
     # 10. METODOLOGI & RULE OF THUMB
     # ==========================================
 
-    with st.expander("ℹ️ Metodologi & Rule of Thumb", expanded=False):
+    with st.expander("Metodologi & Rule of Thumb", expanded=False):
         st.markdown(
             """
             **Metodologi:**
@@ -987,9 +994,9 @@ elif analysis == "Klasifikasi Produk":
             - Metrik penjualan per produk selama periode analisis: `total_revenue`, `total_qty`, 
               `months_sold`, `first_sale_date`, `last_sale_date`.
             - Umur produk (`age_months`) dihitung dari `TANGGAL_LAUNCHING`; produk yang tidak laku dalam
-              ≥ 6 bulan terakhir diperlakukan sebagai kandidat **dead stock**. [web:63]
+              ≥ 6 bulan terakhir diperlakukan sebagai kandidat **dead stock**.
             - Threshold **Best Seller** memakai percentile 80% (top 20%) dari distribusi revenue/qty, 
-              sesuai praktik umum ABC classification. [web:58][web:61]
+              sesuai praktik umum ABC classification.
 
             **Rule of Thumb Kelas:**
             - **Dead**: tidak ada penjualan dalam 6 bulan terakhir atau `total_qty = 0` di periode analisis.  
@@ -1001,10 +1008,10 @@ elif analysis == "Klasifikasi Produk":
             - **Slow Moving**: 
               - Bukan New Launching dan bukan Dead.  
               - Tidak memenuhi kriteria Best Seller (nilai dan frekuensi penjualan relatif rendah).  
-
-            Nilai 3 bulan (New), 6 bulan (Dead), dan percentile 80% untuk Best Seller adalah
-            rule of thumb yang bisa disesuaikan dengan karakter bisnis (misalnya fashion vs produk durable). [web:57][web:65]
-            """
+            - **Standar**
+              - Bukan New Launching dan bukan Dead.
+              - Tidak memenuhi kriteria Best Seller dan tidak termasuk Slow Moving.
+              - Produk dengan performa mid-range: kontribusinya positif, tapi bukan prioritas utama maupun masalah stok.
         )
 
     # ==========================================
@@ -1343,6 +1350,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
