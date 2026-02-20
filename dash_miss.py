@@ -170,10 +170,10 @@ if prod_multi:
     df_filtered = df_filtered[df_filtered["Nama Barang"].isin(prod_multi)]
 
 st.subheader("Preview Data Setelah Filter")
-st.dataframe(df_filtered.head(300))
+#st.dataframe(df_filtered.head(300))
 with st.expander("Metodologi & Rule of Thumb", expanded=False):
-        st.markdown("""MUFTIIII  
-        """)
+        st.dataframe(df_filtered.head(300)) 
+        
 
 # -----------------------------
 # Numeric & quick checks
@@ -1426,6 +1426,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
