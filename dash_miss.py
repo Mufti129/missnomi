@@ -580,6 +580,9 @@ elif analysis == "Gross Profit & Margin":
     # =========================
     # HITUNG GROSS PROFIT
     # =========================
+    st.write(df_pm[["HPP","QTY"]].dtypes)
+    st.write(df_pm[["HPP","QTY"]].head())
+    
     df_pm["Revenue"] = df_pm["Nominal"]
     df_pm["COGS"] = df_pm["HPP"] * df_pm["QTY"]
     df_pm["Gross Profit"] = df_pm["Revenue"] - df_pm["COGS"]
@@ -1340,6 +1343,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
