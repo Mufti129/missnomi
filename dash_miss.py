@@ -535,7 +535,7 @@ elif analysis == "Pareto Produk":
                 "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
             )
 
-elif selected_menu == "Gross Profit & Margin":
+elif analysis == "Gross Profit & Margin":
 
     st.subheader("📊 Gross Profit & Gross Margin Analysis")
 
@@ -1452,6 +1452,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
