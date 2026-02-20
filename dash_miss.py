@@ -569,10 +569,10 @@ elif analysis == "Gross Profit & Margin":
     # FILTER VALID SALES
     # =========================
     if "Status" in df_pm.columns:
-        df_pm = df_pm[df_pm["Status"] == "Shipping"]
+        df_pm = df_pm[df_pm["Status"] == "SHIPPING"]
 
     if "Keterangan" in df_pm.columns:
-        df_pm = df_pm[~df_pm["Keterangan"].isin(["Endorse", "Affiliate", "Retur"])]
+        df_pm = df_pm[~df_pm["Keterangan"].isin(["Endorse", "Affiliatte", "Retur", "RETURAN", "GIVE AWAY", "GIVEAWAY", "peminjaman", "peminjaman baju"])]
 
     if "Retur Sales" in df_pm.columns:
         df_pm = df_pm[df_pm["Retur Sales"].isna()]
@@ -1340,6 +1340,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
