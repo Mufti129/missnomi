@@ -956,7 +956,7 @@ elif analysis == "Klasifikasi Produk":
         f"**{n_best} Best Seller ({share_best:.1f}%)**, "
         f"**{n_new} New Launching ({share_new:.1f}%)**, "
         f"**{n_slow} Slow Moving ({share_slow:.1f}%)**, "
-        f"dan **{n_dead} Dead ({share_dead:.1f}%)**
+        f"dan **{n_dead} Dead ({share_dead:.1f}%)**, "
         f"dan **{n_stan} Standar ({share_stan:.1f}%)**.\n"
         f"- Kelas **Best Seller** menyumbang sekitar **{best_rev_share:.1f}%** dari total revenue periode ini."
     )
@@ -1350,6 +1350,7 @@ else:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
