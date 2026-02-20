@@ -1133,257 +1133,164 @@ else:
     st.write("Models to run:", chosen_models)
 
     # Function that runs a single model and returns test_forecast and future_forecast series
-    # Function that runs a single model and returns test_forecast and future_forecast series
     def run_model(name, train_ser, test_ser, period=30):
-        """Return (test_forecast_series, future_forecast_series, info_dict)."""
+        """Return (test_forecast_series, future_forecast_series, info_dict)"""
         info = {"model": name}
         try:
             if name == "ARIMA":
-                model = ARIMA(train_ser, order=(2, 1, 2))
+                model = ARIMA(train_ser, order=(2,1,2))
                 fit = model.fit()
                 test_fc = fit.forecast(steps=len(test_ser))
                 future_fc = fit.forecast(steps=period)
                 test_fc = pd.Series(test_fc, index=test_ser.index)
-                future_fc = pd.Series(
-                    future_fc,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-                info["note"] = "ARIMA(2,1,2)"
-    
+                future_fc = pd.Series(future_fc, index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+                info['note'] = "ARIMA(2,1,2)"
+
             elif name == "SES":
                 model = SimpleExpSmoothing(train_ser)
                 fit = model.fit()
                 test_fc = fit.forecast(steps=len(test_ser))
                 future_fc = fit.forecast(steps=period)
                 test_fc = pd.Series(test_fc, index=test_ser.index)
-                future_fc = pd.Series(
-                    future_fc,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-    
+                future_fc = pd.Series(future_fc, index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+
             elif name == "Holt":
                 model = Holt(train_ser)
                 fit = model.fit()
                 test_fc = fit.forecast(steps=len(test_ser))
                 future_fc = fit.forecast(steps=period)
                 test_fc = pd.Series(test_fc, index=test_ser.index)
-                future_fc = pd.Series(
-                    future_fc,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-    
+                future_fc = pd.Series(future_fc, index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+
             elif name == "Holt-Winters":
                 sp = 7 if len(train_ser) >= 14 else None
                 if sp:
-                    model = ExponentialSmoothing(
-                        train_ser,
-                        trend="add",
-                        seasonal="add",
-                        seasonal_periods=sp,
-                    )
+                    model = ExponentialSmoothing(train_ser, trend="add", seasonal="add", seasonal_periods=sp)
                 else:
-                    model = ExponentialSmoothing(
-                        train_ser,
-                        trend="add",
-                        seasonal=None,
-                    )
+                    model = ExponentialSmoothing(train_ser, trend="add", seasonal=None)
                 fit = model.fit()
                 test_fc = fit.forecast(steps=len(test_ser))
                 future_fc = fit.forecast(steps=period)
                 test_fc = pd.Series(test_fc, index=test_ser.index)
-                future_fc = pd.Series(
-                    future_fc,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-    
+                future_fc = pd.Series(future_fc, index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+
             elif name == "MovingAverage":
                 window = 7
                 last_ma = train_ser.rolling(window).mean().iloc[-1]
-                test_fc = pd.Series(
-                    [last_ma] * len(test_ser),
-                    index=test_ser.index,
-                )
-                future_fc = pd.Series(
-                    [last_ma] * period,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-    
+                test_fc = pd.Series([last_ma]*len(test_ser), index=test_ser.index)
+                future_fc = pd.Series([last_ma]*period, index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+
             elif name == "Naive":
                 last = train_ser.iloc[-1]
-                test_fc = pd.Series(
-                    [last] * len(test_ser),
-                    index=test_ser.index,
-                )
-                future_fc = pd.Series(
-                    [last] * period,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-    
+                test_fc = pd.Series([last]*len(test_ser), index=test_ser.index)
+                future_fc = pd.Series([last]*period, index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+
             elif name == "LinearRegression":
-                X_train = np.arange(len(train_ser)).reshape(-1, 1)
+                X_train = np.arange(len(train_ser)).reshape(-1,1)
                 y_train = train_ser.values
-                X_test = np.arange(
-                    len(train_ser),
-                    len(train_ser) + len(test_ser),
-                ).reshape(-1, 1)
-                lr = LinearRegression()
-                lr.fit(X_train, y_train)
+                X_test = np.arange(len(train_ser), len(train_ser)+len(test_ser)).reshape(-1,1)
+                lr = LinearRegression(); lr.fit(X_train, y_train)
                 test_pred = lr.predict(X_test)
                 test_fc = pd.Series(test_pred, index=test_ser.index)
-    
-                X_future = np.arange(
-                    len(train_ser) + len(test_ser),
-                    len(train_ser) + len(test_ser) + period,
-                ).reshape(-1, 1)
-                future_fc = pd.Series(
-                    lr.predict(X_future),
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-                info["estimator"] = lr
-    
+                X_future = np.arange(len(train_ser)+len(test_ser), len(train_ser)+len(test_ser)+period).reshape(-1,1)
+                future_fc = pd.Series(lr.predict(X_future), index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+                info['estimator'] = lr
+
             elif name == "RandomForest":
-                X_train = np.arange(len(train_ser)).reshape(-1, 1)
-                y_train = train_ser.values
-                X_test = np.arange(
-                    len(train_ser),
-                    len(train_ser) + len(test_ser),
-                ).reshape(-1, 1)
-                rf = RandomForestRegressor(
-                    n_estimators=200,
-                    max_depth=5,
-                    random_state=42,
-                )
+                Xy = create_lag_features(pd.DataFrame(train_ser), col='value', lags=[1,7,14])
+                X_train = Xy.drop(columns=['value']).values
+                y_train = Xy['value'].values
+                # build test features by concatenating end of train + test
+                merged = pd.concat([train_ser, test_ser])
+                merged_feat = create_lag_features(pd.DataFrame(merged), col='value', lags=[1,7,14])
+                X_test = merged_feat.drop(columns=['value']).iloc[len(Xy):].values
+                rf = RandomForestRegressor(n_estimators=200, random_state=42)
                 rf.fit(X_train, y_train)
                 test_pred = rf.predict(X_test)
                 test_fc = pd.Series(test_pred, index=test_ser.index)
-    
-                X_future = np.arange(
-                    len(train_ser) + len(test_ser),
-                    len(train_ser) + len(test_ser) + period,
-                ).reshape(-1, 1)
-                future_fc = pd.Series(
-                    rf.predict(X_future),
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-                info["estimator"] = rf
-    
-            elif name == "XGBoost" and _HAS_XGB:
-                X_train = np.arange(len(train_ser)).reshape(-1, 1)
-                y_train = train_ser.values
-                X_test = np.arange(
-                    len(train_ser),
-                    len(train_ser) + len(test_ser),
-                ).reshape(-1, 1)
-                dtrain = xgb.DMatrix(X_train, label=y_train)
-                dtest = xgb.DMatrix(X_test)
-                params = {
-                    "objective": "reg:squarederror",
-                    "max_depth": 3,
-                    "eta": 0.1,
-                    "subsample": 0.8,
-                    "colsample_bytree": 0.8,
-                    "seed": 42,
-                }
-                num_boost = 200
-                bst = xgb.train(params, dtrain, num_boost)
-                test_pred = bst.predict(dtest)
-                test_fc = pd.Series(test_pred, index=test_ser.index)
-    
-                X_future = np.arange(
-                    len(train_ser) + len(test_ser),
-                    len(train_ser) + len(test_ser) + period,
-                ).reshape(-1, 1)
-                dfuture = xgb.DMatrix(X_future)
-                future_pred = bst.predict(dfuture)
-                future_fc = pd.Series(
-                    future_pred,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-                info["booster"] = "xgboost"
-    
-            elif name == "LSTM" and _HAS_TF:
-                info["note"] = "LSTM belum diimplementasikan"
-                test_fc = pd.Series(
-                    np.nan,
-                    index=test_ser.index,
-                )
-                future_fc = pd.Series(
-                    np.nan,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-    
-            else:
-                info["error"] = f"Unknown or unsupported model: {name}"
-                test_fc = pd.Series(
-                    np.nan,
-                    index=test_ser.index,
-                )
-                future_fc = pd.Series(
-                    np.nan,
-                    index=pd.date_range(
-                        test_ser.index[-1] + timedelta(days=1),
-                        periods=period,
-                        freq="D",
-                    ),
-                )
-    
-        except Exception as e:
-            info["error"] = str(e)
-            test_fc = pd.Series(
-                np.nan,
-                index=test_ser.index,
-            )
-            future_fc = pd.Series(
-                np.nan,
-                index=pd.date_range(
-                    test_ser.index[-1] + timedelta(days=1),
-                    periods=period,
-                    freq="D",
-                ),
-            )
-    
-        return test_fc, future_fc, info
+                # future using iterative prediction
+                future_preds = []
+                last_window = merged.values.flatten().tolist()
+                for _ in range(period):
+                    lag1 = last_window[-1]
+                    lag7 = last_window[-7] if len(last_window)>=7 else last_window[0]
+                    lag14 = last_window[-14] if len(last_window)>=14 else last_window[0]
+                    feat = np.array([lag1, lag7, lag14, pd.Timestamp.max.dayofweek, 0, 0]).reshape(1,-1)  # simple placeholder for dows
+                    # we will instead rely on model.predict with just lags shape
+                    # build feat consistent with training (lag1,lag7,lag14,dayofweek,day,month) -- we approximate day features as zeros
+                    try:
+                        pred = rf.predict(feat)
+                    except Exception:
+                        pred = [last_window[-1]]
+                    future_preds.append(pred[0])
+                    last_window.append(pred[0])
+                future_fc = pd.Series(future_preds, index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+                info['estimator'] = rf
 
+            elif name == "XGBoost" and _HAS_XGB:
+                X_train = np.arange(len(train_ser)).reshape(-1,1)
+                y_train = train_ser.values
+                X_test = np.arange(len(train_ser), len(train_ser)+len(test_ser)).reshape(-1,1)
+                model = XGBRegressor(n_estimators=200, learning_rate=0.05)
+                model.fit(X_train, y_train)
+                pred = model.predict(X_test)
+                test_fc = pd.Series(pred, index=test_ser.index)
+                X_future = np.arange(len(train_ser)+len(test_ser), len(train_ser)+len(test_ser)+period).reshape(-1,1)
+                future_fc = pd.Series(model.predict(X_future), index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+                info['estimator'] = model
+
+            elif name == "LSTM" and _HAS_TF:
+                # build sequences (simple)
+                series = np.array(train_ser.fillna(method='ffill').values).flatten()
+                window = 14
+                Xs, ys = [], []
+                for i in range(window, len(series)):
+                    Xs.append(series[i-window:i])
+                    ys.append(series[i])
+                Xs, ys = np.array(Xs), np.array(ys)
+                if len(Xs) < 10:
+                    raise ValueError("Data too short for LSTM")
+                Xs = Xs.reshape((Xs.shape[0], Xs.shape[1], 1))
+                split = int(len(Xs)*0.8)
+                X_train_l, y_train_l = Xs, ys
+                # build model
+                model = Sequential([
+                    LSTM(64, return_sequences=True, input_shape=(window,1)),
+                    Dropout(0.2),
+                    LSTM(32, return_sequences=False),
+                    Dropout(0.2),
+                    Dense(16, activation='relu'),
+                    Dense(1)
+                ])
+                model.compile(optimizer='adam', loss='mse')
+                model.fit(X_train_l, y_train_l, epochs=30, batch_size=16, verbose=0)
+                # prepare test sequences from the end of train + test
+                combined = np.concatenate([train_ser.values.flatten(), test_ser.values.flatten()])
+                X_test_seq = []
+                for i in range(window, window+len(test_ser)):
+                    seq = combined[i-window:i]
+                    X_test_seq.append(seq)
+                X_test_seq = np.array(X_test_seq).reshape((len(X_test_seq), window,1))
+                pred_scaled = model.predict(X_test_seq).flatten()
+                test_fc = pd.Series(pred_scaled, index=test_ser.index)
+                # future iterative
+                last_window = combined[-window:].tolist()
+                future_preds = []
+                for _ in range(period):
+                    arr = np.array(last_window[-window:]).reshape((1,window,1))
+                    p = model.predict(arr)[0][0]
+                    future_preds.append(p)
+                    last_window.append(p)
+                future_fc = pd.Series(future_preds, index=pd.date_range(test_ser.index[-1]+timedelta(days=1), periods=period, freq='D'))
+                info['estimator'] = model
+
+            else:
+                raise ValueError(f"Model {name} not available or not implemented")
+
+            return test_fc, future_fc, info
+
+        except Exception as e:
+            return None, None, {"model": name, "error": str(e)}
 
     # Run models
     period = st.slider("Jumlah hari forecast masa depan:", 7, 180, 30)
@@ -1438,11 +1345,13 @@ else:
     ax_f.legend()
     st.pyplot(fig_f)
 
+
     # If log transform applied, remind user results are in log-scale
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
 
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
