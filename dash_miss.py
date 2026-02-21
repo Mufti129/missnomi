@@ -160,7 +160,7 @@ lstm_toggle = st.sidebar.checkbox("Enable LSTM (only if TensorFlow is installed)
 
 # Analysis selector
 st.sidebar.markdown("### Analisis")
-analysis = st.sidebar.radio("Pilih Analisis:", ["Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk","Gross Profit & Margin","Klasifikasi Produk"])
+analysis = st.sidebar.radio("Pilih Analisis:", ["Overview","Forecasting","Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk","Gross Profit & Margin","Klasifikasi Produk"])
 
 # -----------------------------
 # Apply filters
@@ -183,9 +183,236 @@ if df_filtered.empty:
     st.stop()
 
 # -----------------------------
+# Overviews
+# -----------------------------
+if analysis == "Overview":
+
+    st.header("Executive Overview")
+
+    total_sales = df_filtered["Nominal"].sum()
+    total_qty = df_filtered["QTY"].sum()
+    total_days = df_filtered["Tgl. Pesanan"].nunique()
+    avg_per_day = total_sales / total_days if total_days > 0 else 0
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Total Revenue", f"{total_sales:,.0f}")
+    col2.metric("Total QTY Sold", f"{total_qty:,.0f}")
+    col3.metric("Active Days", total_days)
+    col4.metric("Avg Revenue per Day", f"{avg_per_day:,.0f}")
+
+    st.subheader("Trend Penjualan Harian")
+
+    df_daily = (
+        df_filtered
+        .groupby("Tgl. Pesanan")["Nominal"]
+        .sum()
+        .reset_index()
+        .sort_values("Tgl. Pesanan")
+    )
+
+    st.line_chart(df_daily.set_index("Tgl. Pesanan")["Nominal"])
+
+# -----------------------------
+# Forecasting
+# -----------------------------
+elif analysis == "Forecasting":
+
+    st.header("Forecasting per Produk / Grup")
+
+    metric = metric_choice
+    st.write(f"Metric untuk forecasting: **{metric}**")
+
+    # =========================================
+    # AGREGASI DATA HARIAN
+    # =========================================
+    df_daily = (
+        df_filtered[["Tgl. Pesanan", metric]]
+        .groupby("Tgl. Pesanan")
+        .sum()
+    )
+
+    ts_daily = df_daily.resample("D").sum()
+
+    if ts_daily.empty:
+        st.warning("Data kosong untuk forecasting.")
+        st.stop()
+
+    # =========================================
+    # FORECAST SETTINGS (UI)
+    # =========================================
+    with st.expander("⚙️ Forecast Settings", expanded=True):
+
+        treat_zero = st.checkbox("Treat zeros as missing (ffill)", True)
+        apply_outlier_local = st.checkbox("Remove Outlier (IQR)", True)
+        apply_log_local = st.checkbox("Apply log1p transform", False)
+        apply_smoothing_local = st.checkbox("Apply Rolling Mean", False)
+        smoothing_window_local = st.slider("Smoothing window", 3, 30, 7)
+        period = st.slider("Jumlah hari forecast ke depan", 7, 180, 30)
+
+    # =========================================
+    # PREPROCESSING
+    # =========================================
+    if treat_zero:
+        ts_daily[metric] = ts_daily[metric].replace(0, np.nan)
+        ts_daily[metric] = ts_daily[metric].ffill().bfill().fillna(0)
+
+    ts_daily["value"] = ts_daily[metric]
+
+    if apply_outlier_local:
+        ts_daily["value"] = remove_outliers_iqr(ts_daily["value"])
+
+    if apply_log_local:
+        ts_daily["value"] = np.log1p(ts_daily["value"])
+
+    if apply_smoothing_local:
+        ts_daily["value"] = ts_daily["value"].rolling(
+            window=smoothing_window_local,
+            min_periods=1
+        ).mean()
+
+    # =========================================
+    # VISUALISASI SERIES
+    # =========================================
+    st.subheader("Time Series Harian")
+
+    fig_ts, ax_ts = plt.subplots(figsize=(12,4))
+    ax_ts.plot(ts_daily.index, ts_daily["value"], label="Actual")
+    beautify_timeseries_plot(ax_ts, title="Daily Series", ylabel=metric)
+    ax_ts.legend()
+    st.pyplot(fig_ts)
+
+    # =========================================
+    # TRAIN TEST SPLIT
+    # =========================================
+    train_size = int(len(ts_daily) * 0.8)
+
+    if train_size < 10:
+        st.warning("Data terlalu sedikit untuk forecasting.")
+        st.stop()
+
+    train = ts_daily.iloc[:train_size]
+    test = ts_daily.iloc[train_size:]
+
+    # =========================================
+    # MODEL SELECTION
+    # =========================================
+    model_options = [
+        "ARIMA",
+        "Holt-Winters",
+        "LinearRegression",
+        "RandomForest",
+        "Naive"
+    ]
+
+    selected_models = st.multiselect(
+        "Pilih Model (kosong = auto compare)",
+        model_options
+    )
+
+    if not selected_models:
+        selected_models = model_options
+
+    # =========================================
+    # RUN MODELS
+    # =========================================
+    results = []
+
+    for model_name in selected_models:
+
+        try:
+            if model_name == "ARIMA":
+                model = ARIMA(train["value"], order=(2,1,2)).fit()
+                test_fc = model.forecast(len(test))
+                future_fc = model.forecast(period)
+
+            elif model_name == "Holt-Winters":
+                model = ExponentialSmoothing(
+                    train["value"],
+                    trend="add",
+                    seasonal="add",
+                    seasonal_periods=7
+                ).fit()
+                test_fc = model.forecast(len(test))
+                future_fc = model.forecast(period)
+
+            elif model_name == "LinearRegression":
+                X_train = np.arange(len(train)).reshape(-1,1)
+                y_train = train["value"].values
+                lr = LinearRegression().fit(X_train, y_train)
+
+                X_test = np.arange(len(train), len(train)+len(test)).reshape(-1,1)
+                test_fc = lr.predict(X_test)
+
+                X_future = np.arange(len(train)+len(test),
+                                     len(train)+len(test)+period).reshape(-1,1)
+                future_fc = lr.predict(X_future)
+
+            elif model_name == "RandomForest":
+                X_train = np.arange(len(train)).reshape(-1,1)
+                y_train = train["value"].values
+                rf = RandomForestRegressor(n_estimators=200, random_state=42)
+                rf.fit(X_train, y_train)
+
+                X_test = np.arange(len(train), len(train)+len(test)).reshape(-1,1)
+                test_fc = rf.predict(X_test)
+
+                X_future = np.arange(len(train)+len(test),
+                                     len(train)+len(test)+period).reshape(-1,1)
+                future_fc = rf.predict(X_future)
+
+            elif model_name == "Naive":
+                last = train["value"].iloc[-1]
+                test_fc = np.repeat(last, len(test))
+                future_fc = np.repeat(last, period)
+
+            rmse, mae, mape = evaluate_series(
+                test["value"].values,
+                np.array(test_fc)
+            )
+
+            results.append({
+                "Model": model_name,
+                "RMSE": rmse,
+                "MAPE": mape,
+                "test_fc": test_fc,
+                "future_fc": future_fc
+            })
+
+        except Exception as e:
+            st.warning(f"{model_name} gagal: {e}")
+
+    # =========================================
+    # TAMPILKAN HASIL
+    # =========================================
+    if not results:
+        st.error("Tidak ada model berhasil.")
+        st.stop()
+
+    df_result = pd.DataFrame(results).sort_values("RMSE")
+    st.subheader("Perbandingan Model")
+    st.dataframe(df_result[["Model","RMSE","MAPE"]])
+
+    best = df_result.iloc[0]
+
+    st.success(f"Best Model: {best['Model']} (RMSE={best['RMSE']:.2f})")
+
+    # =========================================
+    # PLOT BEST MODEL
+    # =========================================
+    best_data = next(r for r in results if r["Model"] == best["Model"])
+
+    fig_best, ax_best = plt.subplots(figsize=(12,4))
+    ax_best.plot(train.index, train["value"], label="Train")
+    ax_best.plot(test.index, test["value"], label="Actual")
+    ax_best.plot(test.index, best_data["test_fc"], label="Forecast")
+    beautify_timeseries_plot(ax_best, title="Best Model Forecast", ylabel=metric)
+    ax_best.legend()
+    st.pyplot(fig_best)
+# -----------------------------
 # Descriptive & Correlation
 # -----------------------------
-if analysis == "Descriptive":
+elif analysis == "Descriptive":
     st.header("Descriptive Analysis")
     st.write(df_filtered.describe(include='all'))
     num_cols = df_filtered.select_dtypes(include=[np.number]).columns.tolist()
@@ -1428,6 +1655,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
