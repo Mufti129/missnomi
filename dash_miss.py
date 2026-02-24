@@ -1647,10 +1647,10 @@ elif analysis == "Monitoring & Analisis Retur":
     # =========================
     # FILTER DATA RETUR
     # =========================
-    df_pdf = df.copy()
+    df_pdf = df_retur.copy()
     
     # Pastikan kolom ada
-    required_cols = ["Tanggal", "Nominal", "Channel", "Alasan Retur", "Status Jubelio"]
+    required_cols = ["Tanggal", "Nominal", "Channel", "Alasan Retur", "Status masuk sistem"]
     for col in required_cols:
         if col not in df_pdf.columns:
             st.error(f"Kolom '{col}' tidak ditemukan di data.")
@@ -2091,6 +2091,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
