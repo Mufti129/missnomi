@@ -1634,147 +1634,173 @@ elif analysis == "Monitoring & Analisis Retur":
         st.write(i)
 #report--------#
 #report--------#
-    import pandas as pd
-    import streamlit as st
-    from io import BytesIO
+    # =============================
+# DOWNLOAD PDF LAPORAN RETUR (FINAL VERSION)
+# =============================
+
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib import colors
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib import pagesizes
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.pdfbase import pdfmetrics
+    from reportlab.lib.pagesizes import A4
+    from io import BytesIO
+    from datetime import datetime
     
-    # =========================
-    # FILTER DATA RETUR
-    # =========================
-    df_pdf = df_retur.copy()
-    
-    # Pastikan kolom ada
-    required_cols = ["Tanggal", "Nominal", "Channel", "Alasan Retur", "Status masuk sistem"]
-    for col in required_cols:
-        if col not in df_pdf.columns:
-            st.error(f"Kolom '{col}' tidak ditemukan di data.")
-            st.stop()
-    
-    df_pdf["Tanggal"] = pd.to_datetime(df_pdf["Tanggal"], errors="coerce")
-    
-    # =========================
-    # HITUNG SUMMARY
-    # =========================
-    total_retur = len(df_pdf)
-    total_nominal = df_pdf["Nominal"].sum()
-    total_order = df_pdf["Nomor Pesanan"].nunique() if "Nomor Pesanan" in df_pdf.columns else total_retur
-    
-    retur_jubelio = df_pdf[df_pdf["Status Jubelio"] == "Sudah Masuk"].shape[0]
-    retur_belum_jubelio = df_pdf[df_pdf["Status Jubelio"] == "Belum Masuk"].shape[0]
-    
-    persen_retur = 0
-    if "Total Penjualan" in globals():
-        persen_retur = (total_nominal / Total_Penjualan) * 100
-    
-    df_alasan = df_pdf["Alasan Retur"].value_counts()
-    df_channel = df_pdf["Channel"].value_counts()
-    
-    # =========================
-    # GENERATE PDF
-    # =========================
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
     elements = []
-    
     styles = getSampleStyleSheet()
     
-    # =========================
+    # =============================
     # HEADER
-    # =========================
-    elements.append(Paragraph("LAPORAN ANALISIS RETUR PENJUALAN", styles["Title"]))
+    # =============================
+    elements.append(Paragraph("LAPORAN MONITORING & ANALISIS RETUR", styles["Title"]))
     elements.append(Spacer(1, 12))
     
+    periode_text = f"Periode: {start_date} s/d {end_date}"
+    elements.append(Paragraph(periode_text, styles["Normal"]))
     elements.append(Paragraph("Disusun oleh: Mukhammad Rekza Muft – Data Analyst", styles["Normal"]))
     elements.append(Spacer(1, 20))
     
-    # =========================
-    # RINGKASAN EKSEKUTIF
-    # =========================
-    elements.append(Paragraph("RINGKASAN EKSEKUTIF", styles["Heading2"]))
+    # =============================
+    # KPI SUMMARY
+    # =============================
+    elements.append(Paragraph("RINGKASAN KPI", styles["Heading2"]))
     elements.append(Spacer(1, 10))
     
-    summary_text = f"""
-    Total Retur: {total_retur} pcs<br/>
-    Jumlah Order Retur: {total_order}<br/>
-    Total Nominal Retur: Rp {total_nominal:,.0f}<br/>
-    Sudah Masuk Sistem Jubelio: {retur_jubelio} pcs<br/>
-    Belum Masuk Sistem Jubelio: {retur_belum_jubelio} pcs
-    """
+    summary_data = [
+        ["Total QTY Retur", f"{total_retur_qty:,.0f}"],
+        ["Total Nilai Retur", f"Rp {total_retur_value:,.0f}"],
+        ["Total Order Retur", f"{total_orders:,}"],
+        ["QTY Sudah Masuk Sistem", f"{qty_sudah:,.0f}"],
+        ["QTY Belum Masuk Sistem", f"{qty_belum:,.0f}"],
+        ["Recovery Rate", f"{recovery_rate:.2f}%"],
+    ]
     
-    elements.append(Paragraph(summary_text, styles["Normal"]))
+    summary_table = Table(summary_data, colWidths=[250, 200])
+    summary_table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.whitesmoke),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+    ]))
+    elements.append(summary_table)
     elements.append(Spacer(1, 20))
     
-    # =========================
-    # ANALISIS PENYEBAB
-    # =========================
-    elements.append(Paragraph("ANALISIS PENYEBAB RETUR", styles["Heading2"]))
-    elements.append(Spacer(1, 10))
-    
-    for alasan, qty in df_alasan.items():
-        elements.append(Paragraph(f"- {alasan}: {qty} pcs", styles["Normal"]))
-    
-    elements.append(Spacer(1, 20))
-    
-    # =========================
-    # ANALISIS PER CHANNEL
-    # =========================
-    elements.append(Paragraph("ANALISIS RETUR PER CHANNEL", styles["Heading2"]))
-    elements.append(Spacer(1, 10))
-    
-    for channel, qty in df_channel.items():
-        elements.append(Paragraph(f"- {channel}: {qty} pcs", styles["Normal"]))
-    
-    elements.append(Spacer(1, 20))
-    
-    # =========================
-    # DAMPAK KE OMSET
-    # =========================
-    elements.append(Paragraph("DAMPAK TERHADAP OMSET", styles["Heading2"]))
+    # =============================
+    # AGING CONTROL
+    # =============================
+    elements.append(Paragraph("AGING CONTROL (BELUM MASUK SISTEM)", styles["Heading2"]))
     elements.append(Spacer(1, 10))
     
     elements.append(Paragraph(
-        f"Persentase Retur terhadap Omset: {persen_retur:.2f}%",
+        f"Total QTY Belum Masuk: {total_belum_qty:,.0f} pcs",
         styles["Normal"]
     ))
+    elements.append(Paragraph(
+        f"Total Nilai Tertahan: Rp {total_belum_amount:,.0f}",
+        styles["Normal"]
+    ))
+    elements.append(Spacer(1, 10))
+    
+    # Top 10 Aging
+    if not df_belum.empty:
+        top_aging = df_belum.sort_values("Aging (Hari)", ascending=False).head(10)
+    
+        aging_data = [["No Pesanan", "SKU", "QTY", "Aging (Hari)"]]
+    
+        for _, row in top_aging.iterrows():
+            aging_data.append([
+                str(row["No Pesanan"]),
+                str(row["SKU"]),
+                str(row["QTY"]),
+                str(row["Aging (Hari)"])
+            ])
+    
+        aging_table = Table(aging_data, colWidths=[120,120,60,80])
+        aging_table.setStyle(TableStyle([
+            ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+            ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ]))
+        elements.append(aging_table)
     
     elements.append(Spacer(1, 20))
     
-    # =========================
-    # REKOMENDASI STRATEGIS
-    # =========================
-    elements.append(Paragraph("KESIMPULAN & REKOMENDASI", styles["Heading2"]))
+    # =============================
+    # RETUR PER SKU (TOP 10)
+    # =============================
+    elements.append(Paragraph("TOP 10 SKU RETUR", styles["Heading2"]))
     elements.append(Spacer(1, 10))
     
-    rekomendasi_text = """
-    1. Perketat QC pada produk dengan frekuensi retur tinggi.
-    2. Monitoring retur per channel dilakukan mingguan.
-    3. Sinkronisasi retur ke sistem Jubelio maksimal H+1.
-    4. Evaluasi deskripsi produk untuk mengurangi mismatch ekspektasi.
-    5. Buat dashboard monitoring retur real-time untuk kontrol manajemen.
-    """
+    top_sku_pdf = sku_summary.head(10)
     
-    elements.append(Paragraph(rekomendasi_text, styles["Normal"]))
+    sku_data = [["SKU", "Nama Barang", "QTY", "Nilai Retur"]]
     
-    # =========================
+    for _, row in top_sku_pdf.iterrows():
+        sku_data.append([
+            str(row["SKU"]),
+            str(row["Nama Barang"]),
+            f"{row['QTY']:,.0f}",
+            f"Rp {row['amount']:,.0f}"
+        ])
+    
+    sku_table = Table(sku_data, colWidths=[90,160,60,100])
+    sku_table.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+    ]))
+    
+    elements.append(sku_table)
+    elements.append(Spacer(1, 20))
+    
+    # =============================
+    # RETUR PER CHANNEL
+    # =============================
+    elements.append(Paragraph("RETUR PER SUMBER", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
+    
+    channel_data = [["Sumber", "QTY", "Nilai Retur"]]
+    
+    for _, row in channel_summary.iterrows():
+        channel_data.append([
+            str(row["Sumber"]),
+            f"{row['QTY']:,.0f}",
+            f"Rp {row['amount']:,.0f}"
+        ])
+    
+    channel_table = Table(channel_data, colWidths=[180,80,120])
+    channel_table.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+    ]))
+    
+    elements.append(channel_table)
+    elements.append(Spacer(1, 20))
+    
+    # =============================
+    # INSIGHT OTOMATIS
+    # =============================
+    elements.append(Paragraph("INSIGHT ANALISIS", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
+    
+    for i in insight:
+        elements.append(Paragraph(i, styles["Normal"]))
+    
+    elements.append(Spacer(1, 20))
+    
+    # =============================
+    # FOOTER
+    # =============================
+    generated_time = datetime.now().strftime("%d-%m-%Y %H:%M")
+    elements.append(Paragraph(f"Laporan digenerate otomatis pada {generated_time}", styles["Normal"]))
+    
+    # =============================
     # BUILD PDF
-    # =========================
+    # =============================
     doc.build(elements)
-    
     buffer.seek(0)
     
-    # =========================
-    # DOWNLOAD BUTTON
-    # =========================
     st.download_button(
-        label="📥 Download Laporan Retur (PDF)",
+        label="📥 Download Laporan Retur (Executive PDF)",
         data=buffer,
-        file_name="Laporan_Analisis_Retur.pdf",
+        file_name=f"Laporan_Retur_{start_date}_{end_date}.pdf",
         mime="application/pdf"
     )
 # -----------------------------
@@ -2091,6 +2117,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
