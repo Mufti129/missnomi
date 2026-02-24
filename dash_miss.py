@@ -1632,125 +1632,151 @@ elif analysis == "Monitoring & Analisis Retur":
 
     for i in insight:
         st.write(i)
-    import io
+#report--------#
+#report--------#
+    import pandas as pd
+    import streamlit as st
+    from io import BytesIO
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib import pagesizes
-    from reportlab.lib.units import inch
-    from datetime import datetime
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.pdfbase import pdfmetrics
     
-    # ===============================
-    # BUTTON GENERATE REPORT
-    # ===============================
+    # =========================
+    # FILTER DATA RETUR
+    # =========================
+    df_pdf = df.copy()
     
-    if st.button("Generate Board Report (PDF)"):
+    # Pastikan kolom ada
+    required_cols = ["Tanggal", "Nominal", "Channel", "Alasan Retur", "Status Jubelio"]
+    for col in required_cols:
+        if col not in df_pdf.columns:
+            st.error(f"Kolom '{col}' tidak ditemukan di data.")
+            st.stop()
     
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
-        elements = []
-        styles = getSampleStyleSheet()
+    df_pdf["Tanggal"] = pd.to_datetime(df_pdf["Tanggal"], errors="coerce")
     
-        # ====== PREP DATA ======
-        #df_pdf = df_filtered.copy()df_retur
-        df_pdf = df_retur.copy()
+    # =========================
+    # HITUNG SUMMARY
+    # =========================
+    total_retur = len(df_pdf)
+    total_nominal = df_pdf["Nominal"].sum()
+    total_order = df_pdf["Nomor Pesanan"].nunique() if "Nomor Pesanan" in df_pdf.columns else total_retur
     
-        df_pdf["Tanggal"] = pd.to_datetime(df_pdf["Tanggal"], errors="coerce")
-        today = pd.to_datetime("today").normalize()
-        df_pdf["Aging (Hari)"] = (today - df_pdf["Tanggal"]).dt.days
+    retur_jubelio = df_pdf[df_pdf["Status Jubelio"] == "Sudah Masuk"].shape[0]
+    retur_belum_jubelio = df_pdf[df_pdf["Status Jubelio"] == "Belum Masuk"].shape[0]
     
-        total_qty = df_pdf["QTY"].sum()
-        total_amount = df_pdf["amount"].sum()
-        total_order = df_pdf["No Pesanan"].nunique()
+    persen_retur = 0
+    if "Total Penjualan" in globals():
+        persen_retur = (total_nominal / Total_Penjualan) * 100
     
-        qty_sudah = df_pdf[df_pdf["Status masuk sistem"]=="sudah"]["QTY"].sum()
-        qty_belum = df_pdf[df_pdf["Status masuk sistem"]=="belum"]["QTY"].sum()
-        amount_belum = df_pdf[df_pdf["Status masuk sistem"]=="belum"]["amount"].sum()
+    df_alasan = df_pdf["Alasan Retur"].value_counts()
+    df_channel = df_pdf["Channel"].value_counts()
     
-        recovery_rate = (qty_sudah / total_qty * 100) if total_qty else 0
+    # =========================
+    # GENERATE PDF
+    # =========================
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
+    elements = []
     
-        over_7 = df_pdf[df_pdf["Aging (Hari)"] > 7]["QTY"].sum()
-        over_14 = df_pdf[df_pdf["Aging (Hari)"] > 14]["QTY"].sum()
+    styles = getSampleStyleSheet()
     
-        # ====== TITLE ======
-        elements.append(Paragraph("BOARD LEVEL REPORT - RETURN CONTROL SYSTEM", styles["Heading1"]))
-        elements.append(Spacer(1, 0.3 * inch))
-        elements.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]))
-        elements.append(Spacer(1, 0.4 * inch))
+    # =========================
+    # HEADER
+    # =========================
+    elements.append(Paragraph("LAPORAN ANALISIS RETUR PENJUALAN", styles["Title"]))
+    elements.append(Spacer(1, 12))
     
-        # ====== KPI TABLE ======
-        kpi_data = [
-            ["Total Order Retur", total_order],
-            ["Total QTY Retur", total_qty],
-            ["Total Nilai Retur", f"Rp {total_amount:,.0f}"],
-            ["Recovery Rate", f"{recovery_rate:.2f}%"],
-            ["Nilai Tertahan", f"Rp {amount_belum:,.0f}"],
-        ]
+    elements.append(Paragraph("Disusun oleh: Mukhammad Rekza Muft – Data Analyst", styles["Normal"]))
+    elements.append(Spacer(1, 20))
     
-        kpi_table = Table(kpi_data, colWidths=[280,150])
-        kpi_table.setStyle(TableStyle([
-            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
-        ]))
+    # =========================
+    # RINGKASAN EKSEKUTIF
+    # =========================
+    elements.append(Paragraph("RINGKASAN EKSEKUTIF", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
     
-        elements.append(kpi_table)
-        elements.append(Spacer(1, 0.4 * inch))
+    summary_text = f"""
+    Total Retur: {total_retur} pcs<br/>
+    Jumlah Order Retur: {total_order}<br/>
+    Total Nominal Retur: Rp {total_nominal:,.0f}<br/>
+    Sudah Masuk Sistem Jubelio: {retur_jubelio} pcs<br/>
+    Belum Masuk Sistem Jubelio: {retur_belum_jubelio} pcs
+    """
     
-        # ====== AGING TABLE ======
-        aging_data = [
-            ["Aging > 7 Hari (Qty)", over_7],
-            ["Aging > 14 Hari (Qty)", over_14],
-        ]
+    elements.append(Paragraph(summary_text, styles["Normal"]))
+    elements.append(Spacer(1, 20))
     
-        aging_table = Table(aging_data, colWidths=[280,150])
-        aging_table.setStyle(TableStyle([
-            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
-        ]))
+    # =========================
+    # ANALISIS PENYEBAB
+    # =========================
+    elements.append(Paragraph("ANALISIS PENYEBAB RETUR", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
     
-        elements.append(aging_table)
-        elements.append(Spacer(1, 0.4 * inch))
+    for alasan, qty in df_alasan.items():
+        elements.append(Paragraph(f"- {alasan}: {qty} pcs", styles["Normal"]))
     
-        # ====== TOP PRODUCT ======
-        top_product = (
-            df_pdf.groupby("Nama Barang")["QTY"]
-            .sum()
-            .sort_values(ascending=False)
-            .head(5)
-        )
+    elements.append(Spacer(1, 20))
     
-        top_data = [["Produk","Total QTY"]] + [[k,v] for k,v in top_product.items()]
+    # =========================
+    # ANALISIS PER CHANNEL
+    # =========================
+    elements.append(Paragraph("ANALISIS RETUR PER CHANNEL", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
     
-        top_table = Table(top_data)
-        top_table.setStyle(TableStyle([
-            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
-        ]))
+    for channel, qty in df_channel.items():
+        elements.append(Paragraph(f"- {channel}: {qty} pcs", styles["Normal"]))
     
-        elements.append(top_table)
-        elements.append(Spacer(1, 0.4 * inch))
+    elements.append(Spacer(1, 20))
     
-        # ====== INSIGHT ======
-        insight = f"""
-        Total retur Rp {total_amount:,.0f} dengan recovery rate {recovery_rate:.2f}%.
-        Nilai tertahan Rp {amount_belum:,.0f} berpotensi mengganggu cashflow dan akurasi stok.
-        Jika recovery rate < 90%, evaluasi SLA warehouse wajib dilakukan.
-        """
+    # =========================
+    # DAMPAK KE OMSET
+    # =========================
+    elements.append(Paragraph("DAMPAK TERHADAP OMSET", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
     
-        elements.append(Paragraph(insight, styles["Normal"]))
+    elements.append(Paragraph(
+        f"Persentase Retur terhadap Omset: {persen_retur:.2f}%",
+        styles["Normal"]
+    ))
     
-        # Build PDF
-        doc.build(elements)
+    elements.append(Spacer(1, 20))
     
-        pdf_value = buffer.getvalue()
-        buffer.close()
+    # =========================
+    # REKOMENDASI STRATEGIS
+    # =========================
+    elements.append(Paragraph("KESIMPULAN & REKOMENDASI", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
     
-        st.download_button(
-            label="Download Board Level Report",
-            data=pdf_value,
-            file_name="Board_Level_Return_Report.pdf",
-            mime="application/pdf"
-        )
+    rekomendasi_text = """
+    1. Perketat QC pada produk dengan frekuensi retur tinggi.
+    2. Monitoring retur per channel dilakukan mingguan.
+    3. Sinkronisasi retur ke sistem Jubelio maksimal H+1.
+    4. Evaluasi deskripsi produk untuk mengurangi mismatch ekspektasi.
+    5. Buat dashboard monitoring retur real-time untuk kontrol manajemen.
+    """
+    
+    elements.append(Paragraph(rekomendasi_text, styles["Normal"]))
+    
+    # =========================
+    # BUILD PDF
+    # =========================
+    doc.build(elements)
+    
+    buffer.seek(0)
+    
+    # =========================
+    # DOWNLOAD BUTTON
+    # =========================
+    st.download_button(
+        label="📥 Download Laporan Retur (PDF)",
+        data=buffer,
+        file_name="Laporan_Analisis_Retur.pdf",
+        mime="application/pdf"
+    )
 # -----------------------------
 # Forecasting
 # -----------------------------
@@ -2065,6 +2091,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
