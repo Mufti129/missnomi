@@ -1393,7 +1393,8 @@ elif analysis == "Monitoring & Analisis Retur":
     col3.metric("Total Order Retur", f"{total_orders:,}")
 
     st.divider()
-
+    st.write(df_retur["amount"].head())
+    st.write(df_retur["amount"].dtype)
     # =============================
     # STATUS MASUK SISTEM
     # =============================
@@ -1845,6 +1846,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
