@@ -1599,42 +1599,46 @@ elif analysis == "Monitoring & Analisis Retur":
     if not sku_summary.empty:
         top_sku = sku_summary.iloc[0]
         insight.append(
-            f"⚠️ SKU paling sering retur: {top_sku['SKU']} ({top_sku['QTY']} pcs)."
+            f"- SKU paling sering retur: {top_sku['SKU']} ({top_sku['QTY']} pcs)."
         )
-
     # Channel paling bermasalah
     if not channel_summary.empty:
         top_channel = channel_summary.iloc[0]
         insight.append(
-            f"⚠️ Channel dengan nilai retur tertinggi: {top_channel['Sumber']}."
+            f"- Channel dengan nilai retur tertinggi: {top_channel['Sumber']}."
         )
-
     # Recovery analysis
     if recovery_rate < 50:
         insight.append(
-            "🚨 Recovery rate di bawah 50%. Banyak retur belum kembali menjadi stok."
+            "- Recovery rate di bawah 50%. Banyak retur belum kembali menjadi stok."
         )
     elif recovery_rate < 80:
         insight.append(
-            "⚠️ Sebagian retur belum diproses ke sistem."
+            "- Sebagian retur belum diproses ke sistem."
         )
     else:
         insight.append(
-            "✅ Mayoritas retur sudah kembali menjadi stok aktif."
+            "- Mayoritas retur sudah kembali menjadi stok aktif."
         )
-
     if qty_belum > 0:
         insight.append(
-            f"📦 Masih ada {qty_belum:,.0f} pcs belum masuk sistem (nilai Rp {value_belum:,.0f})."
+            f"- Masih ada {qty_belum:,.0f} pcs belum masuk sistem (nilai Rp {value_belum:,.0f})."
         )
 
     avg_retur_order = total_retur_value / total_orders if total_orders != 0 else 0
     insight.append(
-        f"💰 Rata-rata nilai retur per order: Rp {avg_retur_order:,.0f}."
+        f"- Rata-rata nilai retur per order: Rp {avg_retur_order:,.0f}."
     )
 
     for i in insight:
         st.write(i)
+with open("Laporan_Retur.pdf", "rb") as f:
+    st.download_button(
+        "Download Laporan Retur (PDF)",
+        f,
+        file_name="Laporan_Retur.pdf",
+        mime="application/pdf"
+    )
 # -----------------------------
 # Forecasting
 # -----------------------------
@@ -1949,6 +1953,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
