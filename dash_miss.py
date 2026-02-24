@@ -1632,11 +1632,122 @@ elif analysis == "Monitoring & Analisis Retur":
 
     for i in insight:
         st.write(i)
-    with open("Laporan_Retur.pdf", "rb") as f:
+    import io
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib import pagesizes
+    from reportlab.lib.units import inch
+    from datetime import datetime
+    
+    # ===============================
+    # BUTTON GENERATE REPORT
+    # ===============================
+    
+    if st.button("Generate Board Report (PDF)"):
+    
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
+        elements = []
+        styles = getSampleStyleSheet()
+    
+        # ====== PREP DATA ======
+        df_pdf = df_filtered.copy()
+    
+        df_pdf["Tanggal"] = pd.to_datetime(df_pdf["Tanggal"], errors="coerce")
+        today = pd.to_datetime("today").normalize()
+        df_pdf["Aging (Hari)"] = (today - df_pdf["Tanggal"]).dt.days
+    
+        total_qty = df_pdf["QTY"].sum()
+        total_amount = df_pdf["amount"].sum()
+        total_order = df_pdf["No Pesanan"].nunique()
+    
+        qty_sudah = df_pdf[df_pdf["Status masuk sistem"]=="sudah"]["QTY"].sum()
+        qty_belum = df_pdf[df_pdf["Status masuk sistem"]=="belum"]["QTY"].sum()
+        amount_belum = df_pdf[df_pdf["Status masuk sistem"]=="belum"]["amount"].sum()
+    
+        recovery_rate = (qty_sudah / total_qty * 100) if total_qty else 0
+    
+        over_7 = df_pdf[df_pdf["Aging (Hari)"] > 7]["QTY"].sum()
+        over_14 = df_pdf[df_pdf["Aging (Hari)"] > 14]["QTY"].sum()
+    
+        # ====== TITLE ======
+        elements.append(Paragraph("BOARD LEVEL REPORT - RETURN CONTROL SYSTEM", styles["Heading1"]))
+        elements.append(Spacer(1, 0.3 * inch))
+        elements.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]))
+        elements.append(Spacer(1, 0.4 * inch))
+    
+        # ====== KPI TABLE ======
+        kpi_data = [
+            ["Total Order Retur", total_order],
+            ["Total QTY Retur", total_qty],
+            ["Total Nilai Retur", f"Rp {total_amount:,.0f}"],
+            ["Recovery Rate", f"{recovery_rate:.2f}%"],
+            ["Nilai Tertahan", f"Rp {amount_belum:,.0f}"],
+        ]
+    
+        kpi_table = Table(kpi_data, colWidths=[280,150])
+        kpi_table.setStyle(TableStyle([
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ]))
+    
+        elements.append(kpi_table)
+        elements.append(Spacer(1, 0.4 * inch))
+    
+        # ====== AGING TABLE ======
+        aging_data = [
+            ["Aging > 7 Hari (Qty)", over_7],
+            ["Aging > 14 Hari (Qty)", over_14],
+        ]
+    
+        aging_table = Table(aging_data, colWidths=[280,150])
+        aging_table.setStyle(TableStyle([
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ]))
+    
+        elements.append(aging_table)
+        elements.append(Spacer(1, 0.4 * inch))
+    
+        # ====== TOP PRODUCT ======
+        top_product = (
+            df_pdf.groupby("Nama Barang")["QTY"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(5)
+        )
+    
+        top_data = [["Produk","Total QTY"]] + [[k,v] for k,v in top_product.items()]
+    
+        top_table = Table(top_data)
+        top_table.setStyle(TableStyle([
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ]))
+    
+        elements.append(top_table)
+        elements.append(Spacer(1, 0.4 * inch))
+    
+        # ====== INSIGHT ======
+        insight = f"""
+        Total retur Rp {total_amount:,.0f} dengan recovery rate {recovery_rate:.2f}%.
+        Nilai tertahan Rp {amount_belum:,.0f} berpotensi mengganggu cashflow dan akurasi stok.
+        Jika recovery rate < 90%, evaluasi SLA warehouse wajib dilakukan.
+        """
+    
+        elements.append(Paragraph(insight, styles["Normal"]))
+    
+        # Build PDF
+        doc.build(elements)
+    
+        pdf_value = buffer.getvalue()
+        buffer.close()
+    
         st.download_button(
-            "Download Laporan Retur (PDF)",
-            f,
-            file_name="Laporan_Retur.pdf",
+            label="Download Board Level Report",
+            data=pdf_value,
+            file_name="Board_Level_Return_Report.pdf",
             mime="application/pdf"
         )
 # -----------------------------
@@ -1953,6 +2064,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
