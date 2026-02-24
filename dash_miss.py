@@ -1426,7 +1426,7 @@ elif analysis == "Monitoring & Analisis Retur":
 
     st.divider()
     #list"
-    st.markdown("## 📋 Retur Belum Masuk Sistem (Aging Control)")
+    st.markdown("##Retur Belum Masuk Sistem (Aging Control)")
 
     # --- Pastikan kolom bersih ---
     df_retur.columns = df_retur.columns.str.strip()
@@ -1465,7 +1465,8 @@ elif analysis == "Monitoring & Analisis Retur":
     total_belum_amount = df_belum["amount"].sum()
     
     col1, col2 = st.columns(2)
-    col1.metric("Total QTY Belum Masuk", total_belum_qty)
+    #col1.metric("Total QTY Belum Masuk", total_belum_qty)
+    col1.metric("QTY Belum Masuk", f"{total_belum_qty:,.0f}")
     col2.metric("Total Nilai Tertahan", f"Rp {total_belum_amount:,.0f}")
     
     # Alert Aging > 7 hari
@@ -1948,6 +1949,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
