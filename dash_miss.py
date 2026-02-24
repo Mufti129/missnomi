@@ -1428,106 +1428,106 @@ elif analysis == "Monitoring & Analisis Retur":
     #list"
     st.markdown("## 📋 Retur Belum Masuk Sistem (Aging Control)")
 
-# --- Pastikan kolom bersih ---
-df_retur.columns = df_retur.columns.str.strip()
-
-# Bersihkan kolom status
-df_retur["Status masuk sistem"] = (
-    df_retur["Status masuk sistem"]
-    .astype(str)
-    .str.lower()
-    .str.strip()
-)
-
-# Pastikan tanggal datetime
-df_retur["Tanggal"] = pd.to_datetime(df_retur["Tanggal"], errors="coerce")
-
-# Pastikan amount numeric
-df_retur["amount"] = (
-    df_retur["amount"]
-    .astype(str)
-    .str.replace("Rp", "", regex=False)
-    .str.replace(".", "", regex=False)
-    .str.replace(",", "", regex=False)
-    .str.strip()
-)
-df_retur["amount"] = pd.to_numeric(df_retur["amount"], errors="coerce").fillna(0)
-
-# --- Filter belum masuk ---
-df_belum = df_retur[df_retur["Status masuk sistem"] == "belum"].copy()
-
-# Hitung aging
-today = pd.to_datetime("today").normalize()
-df_belum["Aging (Hari)"] = (today - df_belum["Tanggal"]).dt.days
-
-# Ringkasan
-total_belum_qty = df_belum["QTY"].sum()
-total_belum_amount = df_belum["amount"].sum()
-
-col1, col2 = st.columns(2)
-col1.metric("Total QTY Belum Masuk", total_belum_qty)
-col2.metric("Total Nilai Tertahan", f"Rp {total_belum_amount:,.0f}")
-
-# Alert Aging > 7 hari
-over_7 = df_belum[df_belum["Aging (Hari)"] > 7]
-over_14 = df_belum[df_belum["Aging (Hari)"] > 14]
-
-if len(over_14) > 0:
-    st.error(f"🚨 {len(over_14)} pesanan belum diproses lebih dari 14 hari.")
-elif len(over_7) > 0:
-    st.warning(f"⚠️ {len(over_7)} pesanan belum diproses lebih dari 7 hari.")
-else:
-    st.success("Semua retur masih dalam batas wajar.")
-
-# --- Expander (Hide / Show) ---
-with st.expander(f"Tampilkan {len(df_belum)} Pesanan Belum Masuk Sistem"):
-
-    if df_belum.empty:
-        st.success("Semua retur sudah masuk sistem.")
+    # --- Pastikan kolom bersih ---
+    df_retur.columns = df_retur.columns.str.strip()
+    
+    # Bersihkan kolom status
+    df_retur["Status masuk sistem"] = (
+        df_retur["Status masuk sistem"]
+        .astype(str)
+        .str.lower()
+        .str.strip()
+    )
+    
+    # Pastikan tanggal datetime
+    df_retur["Tanggal"] = pd.to_datetime(df_retur["Tanggal"], errors="coerce")
+    
+    # Pastikan amount numeric
+    df_retur["amount"] = (
+        df_retur["amount"]
+        .astype(str)
+        .str.replace("Rp", "", regex=False)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", "", regex=False)
+        .str.strip()
+    )
+    df_retur["amount"] = pd.to_numeric(df_retur["amount"], errors="coerce").fillna(0)
+    
+    # --- Filter belum masuk ---
+    df_belum = df_retur[df_retur["Status masuk sistem"] == "belum"].copy()
+    
+    # Hitung aging
+    today = pd.to_datetime("today").normalize()
+    df_belum["Aging (Hari)"] = (today - df_belum["Tanggal"]).dt.days
+    
+    # Ringkasan
+    total_belum_qty = df_belum["QTY"].sum()
+    total_belum_amount = df_belum["amount"].sum()
+    
+    col1, col2 = st.columns(2)
+    col1.metric("Total QTY Belum Masuk", total_belum_qty)
+    col2.metric("Total Nilai Tertahan", f"Rp {total_belum_amount:,.0f}")
+    
+    # Alert Aging > 7 hari
+    over_7 = df_belum[df_belum["Aging (Hari)"] > 7]
+    over_14 = df_belum[df_belum["Aging (Hari)"] > 14]
+    
+    if len(over_14) > 0:
+        st.error(f"🚨 {len(over_14)} pesanan belum diproses lebih dari 14 hari.")
+    elif len(over_7) > 0:
+        st.warning(f"⚠️ {len(over_7)} pesanan belum diproses lebih dari 7 hari.")
     else:
-        
-        df_belum_display = df_belum[
-            [
-                "Tanggal",
-                "No Pesanan",
-                "Pelanggan",
-                "SKU",
-                "Nama Barang",
-                "QTY",
-                "amount",
-                "Sumber",
-                "Nama Toko",
-                "Lokasi",
-                "No Resi Datang",
-                "Aging (Hari)"
-            ]
-        ].sort_values(by="Aging (Hari)", ascending=False)
-
-        # Highlight aging
-        def highlight_aging(val):
-            if val > 14:
-                return "background-color: #ff4d4d"
-            elif val > 7:
-                return "background-color: #ffa64d"
-            else:
-                return ""
-
-        st.dataframe(
-            df_belum_display.style.applymap(
-                highlight_aging,
-                subset=["Aging (Hari)"]
-            ),
-            use_container_width=True
-        )
-
-        # Download CSV
-        csv = df_belum_display.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "Download List Belum Masuk Sistem",
-            csv,
-            "retur_belum_masuk_sistem.csv",
-            "text/csv"
-        )
+        st.success("Semua retur masih dalam batas wajar.")
+    
+    # --- Expander (Hide / Show) ---
+    with st.expander(f"Tampilkan {len(df_belum)} Pesanan Belum Masuk Sistem"):
+    
+        if df_belum.empty:
+            st.success("Semua retur sudah masuk sistem.")
+        else:
+            
+            df_belum_display = df_belum[
+                [
+                    "Tanggal",
+                    "No Pesanan",
+                    "Pelanggan",
+                    "SKU",
+                    "Nama Barang",
+                    "QTY",
+                    "amount",
+                    "Sumber",
+                    "Nama Toko",
+                    "Lokasi",
+                    "No Resi Datang",
+                    "Aging (Hari)"
+                ]
+            ].sort_values(by="Aging (Hari)", ascending=False)
+    
+            # Highlight aging
+            def highlight_aging(val):
+                if val > 14:
+                    return "background-color: #ff4d4d"
+                elif val > 7:
+                    return "background-color: #ffa64d"
+                else:
+                    return ""
+    
+            st.dataframe(
+                df_belum_display.style.applymap(
+                    highlight_aging,
+                    subset=["Aging (Hari)"]
+                ),
+                use_container_width=True
+            )
+    
+            # Download CSV
+            csv = df_belum_display.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download List Belum Masuk Sistem",
+                csv,
+                "retur_belum_masuk_sistem.csv",
+                "text/csv"
+            )
     # =============================
     # RETUR PER SKU
     # =============================
@@ -1948,6 +1948,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
