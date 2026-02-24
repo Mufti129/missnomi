@@ -1652,7 +1652,8 @@ elif analysis == "Monitoring & Analisis Retur":
         styles = getSampleStyleSheet()
     
         # ====== PREP DATA ======
-        df_pdf = df_filtered.copy()
+        #df_pdf = df_filtered.copy()df_retur
+        df_pdf = df_retur.copy()
     
         df_pdf["Tanggal"] = pd.to_datetime(df_pdf["Tanggal"], errors="coerce")
         today = pd.to_datetime("today").normalize()
@@ -2064,6 +2065,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
