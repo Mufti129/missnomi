@@ -1632,13 +1632,13 @@ elif analysis == "Monitoring & Analisis Retur":
 
     for i in insight:
         st.write(i)
-with open("Laporan_Retur.pdf", "rb") as f:
-    st.download_button(
-        "Download Laporan Retur (PDF)",
-        f,
-        file_name="Laporan_Retur.pdf",
-        mime="application/pdf"
-    )
+    with open("Laporan_Retur.pdf", "rb") as f:
+        st.download_button(
+            "Download Laporan Retur (PDF)",
+            f,
+            file_name="Laporan_Retur.pdf",
+            mime="application/pdf"
+        )
 # -----------------------------
 # Forecasting
 # -----------------------------
@@ -1953,6 +1953,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
