@@ -160,7 +160,7 @@ lstm_toggle = st.sidebar.checkbox("Enable LSTM (only if TensorFlow is installed)
 
 # Analysis selector
 st.sidebar.markdown("### Analisis")
-analysis = st.sidebar.radio("Pilih Analisis:", ["Overview","Forecasting","Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk","Gross Profit & Margin","Klasifikasi Produk"])
+analysis = st.sidebar.radio("Pilih Analisis:", ["Overview","Forecasting","Preview Data", "Descriptive", "Correlation", "Forecasting","Sales by Channel","Monitoring Produk","Pareto Produk","Gross Profit & Margin","Klasifikasi Produk","Monitoring & Analisis Retur"])
 
 # -----------------------------
 # Apply filters
@@ -1339,8 +1339,198 @@ elif analysis == "Klasifikasi Produk":
         file_name=f"klasifikasi_produk_{start_k}_sd_{end_k}.csv",
         mime="text/csv"
     )
+#------RETUR ANALYAYS----#
+elif analysis == "Monitoring & Analisis Retur":
 
+    st.subheader("Monitoring & Analisis Retur")
+    # =============================
+    # LOAD DATA RETUR
+    # =============================
+    retur_url = "https://docs.google.com/spreadsheets/d/1x7h5_RDH6ICMzMq95k-iRXUb-ecQA9zsZmpDh6tThtw/export?format=csv&gid=1446140945"
+    df_retur = pd.read_csv(retur_url)
 
+    # =============================
+    # CLEANING
+    # =============================
+    df_retur["Tanggal"] = pd.to_datetime(df_retur["Tanggal"], errors="coerce")
+    df_retur["QTY"] = pd.to_numeric(df_retur["QTY"], errors="coerce").fillna(0)
+    df_retur["amount"] = pd.to_numeric(df_retur["amount"], errors="coerce").fillna(0)
+
+    df_retur = df_retur.dropna(subset=["Tanggal"])
+
+    # =============================
+    # FILTER TANGGAL
+    # =============================
+    min_date = df_retur["Tanggal"].min().date()
+    max_date = df_retur["Tanggal"].max().date()
+
+    start_date, end_date = st.date_input(
+        "Filter Tanggal Retur",
+        [min_date, max_date],
+        min_value=min_date,
+        max_value=max_date
+    )
+
+    df_retur = df_retur[
+        (df_retur["Tanggal"].dt.date >= start_date) &
+        (df_retur["Tanggal"].dt.date <= end_date)
+    ]
+
+    if df_retur.empty:
+        st.warning("Tidak ada data retur di periode ini.")
+        st.stop()
+
+    # =============================
+    # KPI UTAMA
+    # =============================
+    total_retur_qty = df_retur["QTY"].sum()
+    total_retur_value = df_retur["amount"].sum()
+    total_orders = df_retur["No Pesanan"].nunique()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total QTY Retur", f"{total_retur_qty:,.0f}")
+    col2.metric("Total Nilai Retur", f"Rp {total_retur_value:,.0f}")
+    col3.metric("Total Order Retur", f"{total_orders:,}")
+
+    st.divider()
+
+    # =============================
+    # STATUS MASUK SISTEM
+    # =============================
+    st.subheader("Status Masuk Sistem (Jubelio)")
+
+    df_retur["Status masuk sistem"] = (
+        df_retur["Status masuk sistem"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
+
+    df_sudah = df_retur[df_retur["Status masuk sistem"] == "sudah"]
+    df_belum = df_retur[df_retur["Status masuk sistem"] == "belum"]
+
+    qty_sudah = df_sudah["QTY"].sum()
+    value_sudah = df_sudah["amount"].sum()
+
+    qty_belum = df_belum["QTY"].sum()
+    value_belum = df_belum["amount"].sum()
+
+    recovery_rate = (qty_sudah / total_retur_qty * 100) if total_retur_qty != 0 else 0
+
+    col4, col5, col6, col7 = st.columns(4)
+    col4.metric("QTY Sudah Masuk", f"{qty_sudah:,.0f}")
+    col5.metric("QTY Belum Masuk", f"{qty_belum:,.0f}")
+    col6.metric("Nilai Sudah Kembali", f"Rp {value_sudah:,.0f}")
+    col7.metric("Recovery Rate %", f"{recovery_rate:.2f}%")
+
+    st.divider()
+
+    # =============================
+    # RETUR PER SKU
+    # =============================
+    st.subheader("Retur per SKU")
+
+    sku_summary = (
+        df_retur.groupby(["SKU", "Nama Barang"])
+        .agg({"QTY": "sum", "amount": "sum"})
+        .sort_values("QTY", ascending=False)
+        .reset_index()
+    )
+
+    st.dataframe(sku_summary, use_container_width=True)
+
+    # =============================
+    # RETUR PER CHANNEL
+    # =============================
+    st.subheader("Retur per Sumber")
+
+    channel_summary = (
+        df_retur.groupby("Sumber")
+        .agg({"QTY": "sum", "amount": "sum"})
+        .sort_values("amount", ascending=False)
+        .reset_index()
+    )
+
+    st.dataframe(channel_summary, use_container_width=True)
+
+    # =============================
+    # TREND HARIAN
+    # =============================
+    st.subheader("Trend Retur Harian")
+
+    daily_retur = (
+        df_retur.groupby(df_retur["Tanggal"].dt.date)
+        .agg({"QTY": "sum"})
+        .reset_index()
+    )
+
+    st.line_chart(daily_retur.set_index("Tanggal"))
+
+    # =============================
+    # PARETO RETUR (80/20)
+    # =============================
+    st.subheader("Pareto Retur 80/20")
+
+    if not sku_summary.empty:
+        sku_summary["cum_pct"] = (
+            sku_summary["amount"].cumsum() /
+            sku_summary["amount"].sum()
+        )
+
+        pareto_sku = sku_summary[sku_summary["cum_pct"] <= 0.8]
+        st.write(
+            f"{len(pareto_sku)} SKU menyumbang 80% nilai retur."
+        )
+
+    st.divider()
+
+    # =============================
+    # AUTO INSIGHT
+    # =============================
+    st.subheader("Insight")
+
+    insight = []
+
+    # SKU paling bermasalah
+    if not sku_summary.empty:
+        top_sku = sku_summary.iloc[0]
+        insight.append(
+            f"⚠️ SKU paling sering retur: {top_sku['SKU']} ({top_sku['QTY']} pcs)."
+        )
+
+    # Channel paling bermasalah
+    if not channel_summary.empty:
+        top_channel = channel_summary.iloc[0]
+        insight.append(
+            f"⚠️ Channel dengan nilai retur tertinggi: {top_channel['Sumber']}."
+        )
+
+    # Recovery analysis
+    if recovery_rate < 50:
+        insight.append(
+            "🚨 Recovery rate di bawah 50%. Banyak retur belum kembali menjadi stok."
+        )
+    elif recovery_rate < 80:
+        insight.append(
+            "⚠️ Sebagian retur belum diproses ke sistem."
+        )
+    else:
+        insight.append(
+            "✅ Mayoritas retur sudah kembali menjadi stok aktif."
+        )
+
+    if qty_belum > 0:
+        insight.append(
+            f"📦 Masih ada {qty_belum:,.0f} pcs belum masuk sistem (nilai Rp {value_belum:,.0f})."
+        )
+
+    avg_retur_order = total_retur_value / total_orders if total_orders != 0 else 0
+    insight.append(
+        f"💰 Rata-rata nilai retur per order: Rp {avg_retur_order:,.0f}."
+    )
+
+    for i in insight:
+        st.write(i)
 # -----------------------------
 # Forecasting
 # -----------------------------
@@ -1655,6 +1845,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
