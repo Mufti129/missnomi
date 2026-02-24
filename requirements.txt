@@ -6,3 +6,4 @@ seaborn
 scikit-learn
 statsmodels
 plotly==5.18.0
+reportlab
