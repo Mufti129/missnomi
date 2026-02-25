@@ -1572,7 +1572,41 @@ elif analysis == "Monitoring & Analisis Retur":
     )
 
     st.line_chart(daily_retur.set_index("Tanggal"))
-
+    # =============================
+    # TREND Bulanan
+    # =============================
+    monthly_summary = (
+        df_retur.groupby(["Bulan", "Status masuk sistem"])["QTY"]
+        .sum()
+        .unstack()
+        .fillna(0)
+    )
+    
+    # Pastikan kolom tersedia
+    if "sudah" not in monthly_summary.columns:
+        monthly_summary["sudah"] = 0
+    
+    if "belum" not in monthly_summary.columns:
+        monthly_summary["belum"] = 0
+    
+    # Tambah total
+    monthly_summary["Total Retur"] = monthly_summary["sudah"] + monthly_summary["belum"]
+    # Urutkan berdasarkan bulan
+    monthly_summary = monthly_summary.sort_index()
+    # =============================
+    # PLOT HISTOGRAM
+    # =============================
+    fig, ax = plt.subplots(figsize=(8, 4))
+    monthly_summary[["Total Retur", "sudah", "belum"]].plot(
+        kind="bar",
+        ax=ax
+    )
+    ax.set_title("Histogram Bulanan Retur")
+    ax.set_ylabel("QTY")
+    ax.set_xlabel("Bulan")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+   
     # =============================
     # PARETO RETUR (80/20)
     # =============================
@@ -2183,6 +2217,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
