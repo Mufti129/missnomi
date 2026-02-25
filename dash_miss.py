@@ -988,8 +988,7 @@ elif analysis == "Klasifikasi Produk":
        #     value=(min_date, max_date),
         #    key="classif_date"
         #)
-    #col_f1, col_f2 = st.columns([2, 1])
-
+    col_f1, col_f2 = st.columns([2, 1])
     with col_f1:
         start_k, end_k = st.date_input(
             "Periode Analisis Klasifikasi",
@@ -2259,6 +2258,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
