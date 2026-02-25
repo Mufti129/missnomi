@@ -1777,7 +1777,7 @@ elif analysis == "Monitoring & Analisis Retur":
                 str(row["Aging (Hari)"])
             ])
     
-        aging_table = Table(aging_data, colWidths=[200,140,60,70])
+        aging_table = Table(aging_data, colWidths=[250,140,60,70])
         aging_table.setStyle(TableStyle([
             ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
             ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
@@ -1804,7 +1804,7 @@ elif analysis == "Monitoring & Analisis Retur":
             f"Rp {row['amount']:,.0f}"
         ])
     
-    sku_table = Table(sku_data, colWidths=[90,160,60,100])
+    sku_table = Table(sku_data, colWidths=[120,160,60,100])
     sku_table.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
@@ -1852,7 +1852,7 @@ elif analysis == "Monitoring & Analisis Retur":
     # FOOTER
     # =============================
     generated_time = datetime.now().strftime("%d-%m-%Y %H:%M")
-    elements.append(Paragraph(f"Laporan digenerate otomatis pada {generated_time}", styles["Normal"]))
+    elements.append(Paragraph(f"Laporan digenerate pada {generated_time}", styles["Normal"]))
     
     # =============================
     # BUILD PDF
@@ -1861,7 +1861,7 @@ elif analysis == "Monitoring & Analisis Retur":
     buffer.seek(0)
     
     st.download_button(
-        label="📥 Download Laporan Retur (Executive PDF)",
+        label="📥 Download Laporan Retur (PDF)",
         data=buffer,
         file_name=f"Laporan_Retur_{start_date}_{end_date}.pdf",
         mime="application/pdf"
@@ -2180,6 +2180,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
