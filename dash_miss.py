@@ -1009,13 +1009,13 @@ elif analysis == "Klasifikasi Produk":
     st.write("Kolom df_master:", df_master.columns.tolist())
     df_m = df_master.rename(
         columns={
-            "Nama Produk": "Nama Produk Master",
+            "Nama_Produk": "Nama Produk Master",
             "Category Name": "Category Name",
-            "Sell Price": "Sell Price",
-            "TANGGAL LAUNCHING": "TANGGAL_LAUNCHING"
+            "Sell_Price": "Sell Price",
+            "tanggal_launching": "TANGGAL_LAUNCHING"
         }
     ).copy()
-
+    #tanggal_launchingTANGGAL LAUNCHING, "Sell_Price=Sell Price, Nama Produk
     df_m["TANGGAL_LAUNCHING"] = pd.to_datetime(df_m["TANGGAL_LAUNCHING"], errors="coerce")
 
     # merge satu kali, setelah itu semua agregasi pakai df_merged
@@ -2235,6 +2235,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
