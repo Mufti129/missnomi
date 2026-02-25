@@ -966,21 +966,35 @@ elif analysis == "Klasifikasi Produk":
 
     #min_date = df["Tgl. Pesanan"].min()
     #max_date = df["Tgl. Pesanan"].max()
-    
-    # Pastikan kolom tanggal sudah datetime
     df["Tgl. Pesanan"] = pd.to_datetime(df["Tgl. Pesanan"], errors="coerce")
+
+    min_date = df["Tgl. Pesanan"].min()
     max_date = df["Tgl. Pesanan"].max()
     
-    # Default 6 bulan terakhir (berdasarkan data terakhir)
-    end_period = max_date.to_period("M").to_timestamp("M")
-    start_period = (max_date - pd.DateOffset(months=5)).to_period("M").to_timestamp()
+    if pd.isna(min_date) or pd.isna(max_date):
+        st.error("Kolom Tgl. Pesanan tidak valid.")
+        st.stop()
     
-    default_start = start_period.date()
-    default_end = end_period.date()
+    # Hitung 6 bulan terakhir
+    start_6m = max_date - pd.DateOffset(months=6)
     
-    min_date = df["Tgl. Pesanan"].min().date()
-    max_date_only = max_date.date()
-        
+    # Pastikan tidak kurang dari min_date
+    safe_start = max(start_6m, min_date)
+    
+    default_start = safe_start.date()
+    default_end = max_date.date()
+    
+    col_f1, col_f2 = st.columns([2, 1])
+    
+    with col_f1:
+        start_k, end_k = st.date_input(
+            "Periode Analisis Klasifikasi",
+            value=(default_start, default_end),
+            min_value=min_date.date(),
+            max_value=max_date.date(),
+            key="classif_date"
+        )
+    
     #col_f1, col_f2 = st.columns([2, 1])
     #with col_f1:
      #   start_k, end_k = st.date_input(
@@ -988,15 +1002,6 @@ elif analysis == "Klasifikasi Produk":
        #     value=(min_date, max_date),
         #    key="classif_date"
         #)
-    col_f1, col_f2 = st.columns([2, 1])
-    with col_f1:
-        start_k, end_k = st.date_input(
-            "Periode Analisis Klasifikasi",
-            value=(default_start, default_end),
-            min_value=min_date,
-            max_value=max_date_only,
-            key="classif_date"
-        )
     with col_f2:
         level_class = st.radio(
             "Level klasifikasi:",
@@ -2258,6 +2263,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
