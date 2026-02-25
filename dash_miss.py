@@ -1637,7 +1637,9 @@ elif analysis == "Monitoring & Analisis Retur":
     # =============================
 # DOWNLOAD PDF LAPORAN RETUR (FINAL VERSION)
 # =============================
-
+    from reportlab.platypus import Image
+    from reportlab.lib.units import inch
+    import matplotlib.pyplot as plt
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib import colors
@@ -1682,6 +1684,67 @@ elif analysis == "Monitoring & Analisis Retur":
         ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
     ]))
     elements.append(summary_table)
+    elements.append(Spacer(1, 20))
+    # =============================
+    # HISTOGRAM BULANAN RETUR
+    # =============================
+    elements.append(Paragraph("HISTOGRAM BULANAN RETUR", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
+    
+    # Pastikan tanggal datetime
+    df_retur["Tanggal"] = pd.to_datetime(df_retur["Tanggal"], errors="coerce")
+    
+    # Buat kolom bulan
+    df_retur["Bulan"] = df_retur["Tanggal"].dt.to_period("M").astype(str)
+    
+    # Normalisasi status
+    df_retur["Status masuk sistem"] = (
+        df_retur["Status masuk sistem"]
+        .astype(str)
+        .str.lower()
+        .str.strip()
+    )
+    # Grouping bulanan
+    monthly_summary = (
+        df_retur.groupby(["Bulan", "Status masuk sistem"])["QTY"]
+        .sum()
+        .unstack()
+        .fillna(0)
+    )
+    
+    # Pastikan kolom tersedia
+    if "sudah" not in monthly_summary.columns:
+        monthly_summary["sudah"] = 0
+    
+    if "belum" not in monthly_summary.columns:
+        monthly_summary["belum"] = 0
+    
+    # Tambah total
+    monthly_summary["Total Retur"] = monthly_summary["sudah"] + monthly_summary["belum"]
+    # Urutkan berdasarkan bulan
+    monthly_summary = monthly_summary.sort_index()
+    # =============================
+    # PLOT HISTOGRAM
+    # =============================
+    fig, ax = plt.subplots(figsize=(8, 4))
+    monthly_summary[["Total Retur", "sudah", "belum"]].plot(
+        kind="bar",
+        ax=ax
+    )
+    ax.set_title("Histogram Bulanan Retur")
+    ax.set_ylabel("QTY")
+    ax.set_xlabel("Bulan")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    # Simpan ke buffer
+    img_buffer = BytesIO()
+    plt.savefig(img_buffer, format="png")
+    plt.close(fig)
+    img_buffer.seek(0)
+    
+    # Masukkan ke PDF
+    elements.append(Image(img_buffer, width=6.5 * inch, height=3 * inch))
     elements.append(Spacer(1, 20))
     
     # =============================
@@ -2117,6 +2180,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
