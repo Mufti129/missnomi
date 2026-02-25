@@ -1249,7 +1249,7 @@ elif analysis == "Klasifikasi Produk":
     ax_c1.bar(class_count["Kelas"], class_count["Jumlah Produk"], color="#1f77b4")
     ax_c1.set_xlabel("Kelas Produk")
     ax_c1.set_ylabel("Jumlah Produk")
-    ax_c1.set_title("Distribusi Produk per Kelas (Auto)")
+    ax_c1.set_title("Distribusi Produk per Kelas ()")
     ax_c1.grid(axis="y", alpha=0.3)
     st.pyplot(fig_c1)
 
@@ -2263,6 +2263,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
