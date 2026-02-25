@@ -1354,7 +1354,8 @@ elif analysis == "Monitoring & Analisis Retur":
     # =============================
     df_retur["Tanggal"] = pd.to_datetime(df_retur["Tanggal"], errors="coerce")
     df_retur["QTY"] = pd.to_numeric(df_retur["QTY"], errors="coerce").fillna(0)
-    df_retur["amount"] = pd.to_numeric(df_retur["amount"], errors="coerce").fillna(0)
+    #df_retur["amount"] = pd.to_numeric(df_retur["amount"], errors="coerce").fillna(0)
+    df_retur["amount"] = pd.to_numeric(df_retur["amount"], errors="coerce")
 
     df_retur = df_retur.dropna(subset=["Tanggal"])
 
@@ -2180,6 +2181,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
