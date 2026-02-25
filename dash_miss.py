@@ -1777,7 +1777,7 @@ elif analysis == "Monitoring & Analisis Retur":
                 str(row["Aging (Hari)"])
             ])
     
-        aging_table = Table(aging_data, colWidths=[120,120,60,80])
+        aging_table = Table(aging_data, colWidths=[200,140,60,70])
         aging_table.setStyle(TableStyle([
             ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
             ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
@@ -2180,6 +2180,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
