@@ -1575,6 +1575,9 @@ elif analysis == "Monitoring & Analisis Retur":
     # =============================
     # TREND Bulanan
     # =============================
+    st.subheader("RETUR BULANAN")
+    df_retur["Tanggal"] = pd.to_datetime(df_retur["Tanggal"], errors="coerce")
+    df_retur["Bulan"] = df_retur["Tanggal"].dt.to_period("M").astype(str)
     monthly_summary = (
         df_retur.groupby(["Bulan", "Status masuk sistem"])["QTY"]
         .sum()
@@ -2217,6 +2220,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
