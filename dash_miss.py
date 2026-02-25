@@ -1006,7 +1006,7 @@ elif analysis == "Klasifikasi Produk":
     if "SKU" not in df_k.columns or "SKU" not in df_master.columns:
         st.error("Kolom 'SKU' harus ada di transaksi dan master produk.")
         st.stop()
-
+    st.write("Kolom df_master:", df_master.columns.tolist())
     df_m = df_master.rename(
         columns={
             "Nama Produk": "Nama Produk Master",
@@ -2235,6 +2235,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
