@@ -1572,14 +1572,11 @@ elif analysis == "Monitoring & Analisis Retur":
     )
 
     st.line_chart(daily_retur.set_index("Tanggal"))
-    # =============================
-    # TREND Bulanan
-    # =============================
-    st.subheader("Retur Bulanan")
-    import matplotlib.pyplot as plt
+  
     # =============================
     # BUAT KOLOM BULAN
     # =============================
+    import matplotlib.pyplot as plt
     df_retur["Bulan"] = df_retur["Tanggal"].dt.to_period("M")
     
     # =============================
@@ -2238,6 +2235,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
