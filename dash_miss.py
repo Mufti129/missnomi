@@ -1428,7 +1428,7 @@ elif analysis == "Monitoring & Analisis Retur":
 
     st.divider()
     #list"
-    st.markdown("##Retur Belum Masuk Sistem (Aging Control)")
+    st.markdown("Retur Belum Masuk Sistem (Aging Control)")
 
     # --- Pastikan kolom bersih ---
     df_retur.columns = df_retur.columns.str.strip()
@@ -1456,7 +1456,8 @@ elif analysis == "Monitoring & Analisis Retur":
     df_retur["amount"] = pd.to_numeric(df_retur["amount"], errors="coerce").fillna(0)
     
     # --- Filter belum masuk ---
-    df_belum = df_retur[df_retur["Status masuk sistem"] == "belum"].copy()
+    #df_belum = df_retur[df_retur["Status masuk sistem"] == "belum"].copy()
+    df_belum = df_retur[df_retur["Status masuk sistem"] == "belum"]
     
     # Hitung aging
     today = pd.to_datetime("today").normalize()
@@ -2182,6 +2183,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
