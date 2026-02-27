@@ -216,7 +216,21 @@ if analysis == "Overview":
     )
 
     st.line_chart(df_daily.set_index("Tgl. Pesanan")["Nominal"])
-
+#----------Trend Bulanan---------#
+    st.subheader("Trend Penjualan Bulanan")
+    
+    df_monthly = (
+        df_filtered
+        .assign(Bulan=df_filtered["Tgl. Pesanan"].dt.to_period("M"))
+        .groupby("Bulan")["Nominal"]
+        .sum()
+        .reset_index()
+    )
+    
+    # Ubah period ke timestamp supaya bisa diplot
+    df_monthly["Bulan"] = df_monthly["Bulan"].dt.to_timestamp()
+    
+    st.line_chart(df_monthly.set_index("Bulan")["Nominal"])
 # -----------------------------
 # Forecasting
 # -----------------------------
@@ -2267,6 +2281,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
