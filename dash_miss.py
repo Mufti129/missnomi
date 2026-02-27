@@ -231,6 +231,7 @@ if analysis == "Overview":
     df_monthly["Bulan"] = df_monthly["Bulan"].dt.to_timestamp()
     
     st.line_chart(df_monthly.set_index("Bulan")["Nominal"])
+    df_monthly.sort_values("Nominal", ascending=False)
 # -----------------------------
 # Forecasting
 # -----------------------------
@@ -2281,6 +2282,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
