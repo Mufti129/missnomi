@@ -109,10 +109,14 @@ GSHEET_URL = st.text_input("Masukkan CSV export Google Sheet URL :",
 # --- URL master produk (BARU) ---
 GSHEET_URL_MASTER = st.text_input("Masukkan CSV export Google Sheet MASTER PRODUK :",
                            value="https://docs.google.com/spreadsheets/d/1SQ-6kW6YHmqVJHWjE4v5pTGrk10niXl1w-Pvt2N70zs/export?format=csv&gid=0")
+# --- URL Stok (BARU) ---
+GSHEET_URL_STOK = st.text_input("Masukkan CSV export Google Sheet STOK PRODUK :",
+                           value="https://docs.google.com/spreadsheets/d/1atwj9gSWV3R2Bbku_QTrpAKpfv2L_ip69cmT8wkIe0M/export?format=csv&gid=490335004")
 
 try:
     df = load_data(GSHEET_URL)
     df_master = load_data(GSHEET_URL_MASTER)
+    df_stok = load_data(GSHEET_URL_STOK)
 except Exception as e:
     st.error(f"Gagal load Google Sheet: {e}")
     st.stop()
@@ -2263,6 +2267,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
