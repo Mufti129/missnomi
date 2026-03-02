@@ -839,27 +839,6 @@ elif analysis == "Pareto Produk":
         })
     )
         
-        st.subheader("Insight Pareto")
-        top_mask = df_pareto["Cum_%"] <= 80
-        top_products = df_pareto.loc[top_mask, "Nama Barang"].tolist()
-        top_share = (
-            df_pareto.loc[top_mask, "Cum_%"].max()
-            if not df_pareto.loc[top_mask, "Cum_%"].empty
-            else 0
-        )
-
-        if top_products:
-            st.markdown(
-                f"- Sekitar **{len(top_products)} produk** pertama menyumbang "
-                f"±**{top_share:.1f}%** dari total {metric_pareto} pada periode ini.\n"
-                f"- Produk kunci: `{', '.join(top_products[:10])}`"
-                + (" dan seterusnya..." if len(top_products) > 10 else "")
-            )
-        else:
-            st.markdown(
-                "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
-            )
-     
 elif analysis == "Gross Profit & Margin":
     st.subheader("Gross Profit & Margin Analysis")
     df_gp = df.copy()
@@ -2358,6 +2337,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
