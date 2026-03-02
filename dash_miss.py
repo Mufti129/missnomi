@@ -783,7 +783,61 @@ elif analysis == "Pareto Produk":
             st.markdown(
                 "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
             )
-
+        # =========================
+    # STRATEGIC INSIGHTS
+    # =========================
+    st.markdown("---")
+    st.header("Strategic Insights")
+    
+    # Latest Top 1 Contribution %
+    top_1_contribution = (
+        df_pareto.iloc[0][metric_pareto] / total_val * 100
+    )
+    
+    st.subheader("Top Product Contribution %")
+    st.metric("Top 1 Product Contribution", f"{top_1_contribution:.2f}%")
+    
+    # =========================
+    # DEPENDENCY & RISK ANALYSIS
+    # =========================
+    st.subheader("Product Dependency & Risk Analysis")
+    
+    top_3_val = df_pareto.head(3)[metric_pareto].sum()
+    top_3_contribution = top_3_val / total_val * 100
+    
+    col_r1, col_r2 = st.columns(2)
+    
+    with col_r1:
+        st.metric("Top 1 Contribution %", f"{top_1_contribution:.2f}%")
+    
+    with col_r2:
+        st.metric("Top 3 Contribution %", f"{top_3_contribution:.2f}%")
+    
+    # Risk Logic
+    if top_1_contribution > 40:
+        risk_label = "HIGH – Ketergantungan tinggi pada 1 produk"
+    elif top_1_contribution > 25:
+        risk_label = "MODERATE – Perlu monitoring diversifikasi"
+    else:
+        risk_label = "LOW – Portofolio relatif sehat"
+    
+    st.markdown(f"**Risk Assessment:** {risk_label}")
+    
+    # =========================
+    # TOP 5 PRODUCTS TABLE
+    # =========================
+    st.subheader("Top 5 Products by Revenue")
+    
+    df_top5 = df_pareto.head(5).copy()
+    df_top5["Contribution %"] = df_top5[metric_pareto] / total_val * 100
+    
+    st.dataframe(
+        df_top5[["Nama Barang", metric_pareto, "Contribution %"]]
+        .style.format({
+            metric_pareto: "{:,.0f}",
+            "Contribution %": "{:.2f}%"
+        })
+    )
 elif analysis == "Gross Profit & Margin":
     st.subheader("Gross Profit & Margin Analysis")
     df_gp = df.copy()
@@ -2282,6 +2336,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
