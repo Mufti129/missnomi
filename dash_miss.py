@@ -838,57 +838,28 @@ elif analysis == "Pareto Produk":
             "Contribution %": "{:.2f}%"
         })
     )
+        
+        st.subheader("Insight Pareto")
+        top_mask = df_pareto["Cum_%"] <= 80
+        top_products = df_pareto.loc[top_mask, "Nama Barang"].tolist()
+        top_share = (
+            df_pareto.loc[top_mask, "Cum_%"].max()
+            if not df_pareto.loc[top_mask, "Cum_%"].empty
+            else 0
+        )
 
-    # ===============================
-    # DIVERSIFICATION SCORE PRODUK
-    # ===============================
-    
-    # Total revenue
-    total_revenue = df["Nominal"].sum()
-    
-    # Revenue per produk
-    df_product = (
-        df.groupby("Nama Barang")["Nominal"]
-        .sum()
-        .reset_index()
-    )
-    
-    # Hitung share tiap produk
-    df_product["Share"] = df_product["Nominal"] / total_revenue
-    
-    # Hitung HHI
-    hhi = np.sum(df_product["Share"] ** 2)
-    
-    # Diversification Score (0-100)
-    div_score = (1 - hhi) * 100
-    
-    # Effective Number of Products
-    effective_products = 1 / hhi
-    
-    # Top product concentration
-    top_product_share = df_product["Share"].max() * 100
-    
-    # ===============================
-    # OUTPUT
-    # ===============================
-    
-    print("===== PRODUCT DIVERSIFICATION ANALYSIS =====")
-    print(f"Diversification Score : {div_score:.2f}/100")
-    print(f"Effective # Products  : {effective_products:.2f}")
-    print(f"Top Product Share     : {top_product_share:.2f}%")
-    
-    # Alert sederhana
-    if top_product_share > 40:
-        print("⚠️ WARNING: Revenue terlalu tergantung pada 1 produk.")
-    elif div_score < 40:
-        print("⚠️ WARNING: Diversifikasi rendah.")
-    else:
-        print("✔️ Diversifikasi dalam batas sehat.")
-    
-    # =========================
-    # SAFETY CHECK KOLOM WAJIB
-    # =========================
-
+        if top_products:
+            st.markdown(
+                f"- Sekitar **{len(top_products)} produk** pertama menyumbang "
+                f"±**{top_share:.1f}%** dari total {metric_pareto} pada periode ini.\n"
+                f"- Produk kunci: `{', '.join(top_products[:10])}`"
+                + (" dan seterusnya..." if len(top_products) > 10 else "")
+            )
+        else:
+            st.markdown(
+                "Belum ada produk yang mencapai ambang **80%**; distribusi relatif merata."
+            )
+     
 elif analysis == "Gross Profit & Margin":
     st.subheader("Gross Profit & Margin Analysis")
     df_gp = df.copy()
@@ -2387,6 +2358,7 @@ else:
     if apply_log:
         st.warning("Transform log1p diterapkan pada data — hasil forecast dalam skala log1p. Untuk interpretasi, gunakan inverse np.expm1.")
     st.info("by Mukhammad Rekza Mufti-Data Analis")
+
 
 
 
